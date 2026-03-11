@@ -12,7 +12,7 @@ const { results: questions } = await env.DB.prepare(
 	 FROM questions q
 	 JOIN quizzes qz ON q.quiz_id = qz.id
 	 WHERE qz.subject = ?
-	 ORDER BY qz.topic ASC NULLS LAST, qz.id ASC, q."order" ASC, q.id ASC`
+	 ORDER BY qz.topic_order ASC, qz.topic ASC NULLS LAST, q."order" ASC, q.id ASC`
 )
 	.bind(subject)
 	.all<Question & { options?: Option[] }>();
