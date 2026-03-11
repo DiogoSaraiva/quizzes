@@ -11,8 +11,10 @@
 		"preview": "astro build && wrangler dev",
 		"astro": "astro",
 		"generate-types": "wrangler types",
-		"deploy": "astro build && wrangler deploy",
-		"cf-typegen": "wrangler types"
+		"deploy": "astro build && wrangler deploy --main dist/_worker.js/index.js",
+		"cf-typegen": "wrangler types",
+		"import-quiz": "node scripts/import-quiz.js",
+		"delete-quiz": "node scripts/delete-quiz.js"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.0.2",

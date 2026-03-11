@@ -1,0 +1,61 @@
+---
+interface Props {
+	quiz: {
+		slug: string;
+		title: string;
+		description?: string | null;
+		subject?: string | null;
+	};
+}
+
+const { quiz } = Astro.props;
+---
+
+<a href={`/${quiz.slug}`} class="card">
+	{quiz.subject && <span class="subject">{quiz.subject}</span>}
+	<h2>{quiz.title}</h2>
+	{quiz.description && <p>{quiz.description}</p>}
+</a>
+
+<style>
+	.card {
+		display: block;
+		padding: 1.5rem;
+		background: #1e293b;
+		border: 1px solid #334155;
+		border-radius: 0.75rem;
+		text-decoration: none;
+		color: inherit;
+		transition:
+			border-color 0.2s,
+			background 0.2s;
+	}
+
+	.card:hover {
+		border-color: #60a5fa;
+		background: #1e3a5f;
+	}
+
+	.subject {
+		display: inline-block;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #60a5fa;
+		margin-bottom: 0.5rem;
+	}
+
+	h2 {
+		font-size: 1.125rem;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+	}
+
+	p {
+		font-size: 0.875rem;
+		color: #94a3b8;
+		line-height: 1.5;
+		margin-top: 0.25rem;
+	}
+</style>

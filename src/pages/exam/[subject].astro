@@ -1,0 +1,431 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+import type { Option, Question } from "../../lib/db";
+
+const subject = decodeURIComponent(Astro.params.subject ?? "");
+if (!subject) return Astro.redirect("/");
+
+// Buscar todas as perguntas ordenadas por tema → ordem dentro do quiz
+const { results: questions } = await env.DB.prepare(
+	`SELECT q.id, q.text, q.explanation, q.type, q."order"
+	 FROM questions q
+	 JOIN quizzes qz ON q.quiz_id = qz.id
+	 WHERE qz.subject = ?
+	 ORDER BY qz.topic ASC NULLS LAST, qz.id ASC, q."order" ASC, q.id ASC`
+)
+	.bind(subject)
+	.all<Question & { options?: Option[] }>();
+
+if (questions.length === 0) return Astro.redirect("/");
+
+for (const q of questions) {
+	const { results: options } = await env.DB.prepare(
+		'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+	)
+		.bind(q.id)
+		.all<Option>();
+	q.options = options;
+}
+
+const examJson = JSON.stringify({ subject, questions });
+---
+
+<Layout title={`${subject} — Quiz Geral`}>
+	<div class="quiz-header">
+		<span class="subject">{subject}</span>
+		<h1>Quiz Geral</h1>
+		<p class="description">
+			Todas as perguntas de todos os temas, por ordem.
+		</p>
+	</div>
+
+	<div id="quiz-root" data-quiz={examJson}>
+		<div id="screen-start">
+			<p class="meta">{questions.length} perguntas</p>
+			<button id="btn-start" class="btn-primary">Iniciar Quiz Geral</button>
+		</div>
+
+		<div id="screen-player" class="hidden">
+			<div class="progress-bar">
+				<div id="progress-fill"></div>
+			</div>
+			<p class="counter">
+				Pergunta <span id="q-current">1</span> de <span id="q-total"
+					>{questions.length}</span
+				>
+			</p>
+			<div id="q-text" class="question-text"></div>
+			<div id="q-options" class="options-list"></div>
+			<div id="q-explanation" class="explanation hidden"></div>
+			<button id="btn-next" class="btn-primary hidden">Próxima</button>
+		</div>
+
+		<div id="screen-results" class="hidden">
+			<div class="results-inner">
+				<div id="score-circle" class="score-circle">
+					<span id="score-label"></span>
+				</div>
+				<h2 id="result-title"></h2>
+				<p id="result-detail" class="result-detail"></p>
+				<div class="result-actions">
+					<button id="btn-retry" class="btn-secondary">Repetir Exame</button>
+					<a href="/" class="btn-outline">Voltar</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<script>
+	interface Option {
+		id: number;
+		text: string;
+		is_correct: number;
+	}
+	interface Question {
+		id: number;
+		text: string;
+		explanation: string | null;
+		options: Option[];
+	}
+	interface ExamData {
+		subject: string;
+		questions: Question[];
+	}
+
+	const root = document.getElementById("quiz-root")!;
+	const exam: ExamData = JSON.parse(root.dataset.quiz!);
+	const questions = exam.questions;
+
+	let current = 0;
+	let correct = 0;
+	let answered = false;
+
+	const $ = (id: string) => document.getElementById(id)!;
+	const show = (el: HTMLElement) => el.classList.remove("hidden");
+	const hide = (el: HTMLElement) => el.classList.add("hidden");
+
+	function renderQuestion() {
+		answered = false;
+		const q = questions[current];
+		$("q-current").textContent = String(current + 1);
+		$("q-text").textContent = q.text;
+		$("q-options").innerHTML = "";
+		const expEl = $("q-explanation");
+		expEl.textContent = "";
+		hide(expEl);
+		hide($("btn-next"));
+		$("btn-next").textContent =
+			current === questions.length - 1 ? "Ver Resultado" : "Próxima";
+
+		($("progress-fill") as HTMLElement).style.width =
+			`${(current / questions.length) * 100}%`;
+
+		q.options.forEach((opt, i) => {
+			const btn = document.createElement("button");
+			btn.className = "option-btn";
+			btn.textContent = opt.text;
+			btn.addEventListener("click", () => selectOption(i));
+			$("q-options").appendChild(btn);
+		});
+	}
+
+	function selectOption(chosenIndex: number) {
+		if (answered) return;
+		answered = true;
+
+		const q = questions[current];
+		if (q.options[chosenIndex].is_correct) correct++;
+
+		$("q-options").querySelectorAll(".option-btn").forEach((btn, i) => {
+			(btn as HTMLButtonElement).disabled = true;
+			if (q.options[i].is_correct) btn.classList.add("correct");
+			else if (i === chosenIndex) btn.classList.add("wrong");
+		});
+
+		if (q.explanation) {
+			const expEl = $("q-explanation");
+			expEl.textContent = q.explanation;
+			show(expEl);
+		}
+
+		show($("btn-next"));
+	}
+
+	function showResults() {
+		hide($("screen-player"));
+		show($("screen-results"));
+		($("progress-fill") as HTMLElement).style.width = "100%";
+
+		const total = questions.length;
+		const pct = Math.round((correct / total) * 100);
+		$("score-label").textContent = `${correct}/${total}`;
+		$("result-detail").textContent = `${pct}% de respostas corretas`;
+
+		const circle = $("score-circle");
+		if (pct >= 80) {
+			circle.classList.add("excellent");
+			$("result-title").textContent = "Aprovado!";
+		} else if (pct >= 60) {
+			circle.classList.add("good");
+			$("result-title").textContent = "Quase lá!";
+		} else {
+			circle.classList.add("poor");
+			$("result-title").textContent = "Continua a estudar!";
+		}
+	}
+
+	$("btn-start").addEventListener("click", () => {
+		hide($("screen-start"));
+		show($("screen-player"));
+		renderQuestion();
+	});
+
+	$("btn-next").addEventListener("click", () => {
+		if (current < questions.length - 1) {
+			current++;
+			renderQuestion();
+		} else {
+			showResults();
+		}
+	});
+
+	$("btn-retry").addEventListener("click", () => {
+		current = 0;
+		correct = 0;
+		$("score-circle").className = "score-circle";
+		hide($("screen-results"));
+		show($("screen-player"));
+		renderQuestion();
+	});
+</script>
+
+<style>
+	.quiz-header {
+		margin-bottom: 2rem;
+	}
+
+	.subject {
+		display: inline-block;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #60a5fa;
+		margin-bottom: 0.5rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+		margin-bottom: 0.5rem;
+	}
+
+	.description {
+		color: #94a3b8;
+		line-height: 1.6;
+	}
+
+	#screen-start {
+		text-align: center;
+		padding: 3rem 0;
+	}
+
+	.meta {
+		color: #64748b;
+		margin-bottom: 1.5rem;
+		font-size: 1.125rem;
+	}
+
+	.progress-bar {
+		height: 4px;
+		background: #1e293b;
+		border-radius: 2px;
+		margin-bottom: 1rem;
+		overflow: hidden;
+	}
+
+	#progress-fill {
+		height: 100%;
+		background: #60a5fa;
+		transition: width 0.3s ease;
+		width: 0%;
+	}
+
+	.counter {
+		color: #64748b;
+		font-size: 0.875rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.question-text {
+		font-size: 1.25rem;
+		font-weight: 600;
+		line-height: 1.5;
+		margin-bottom: 1.5rem;
+	}
+
+	.options-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.option-btn {
+		width: 100%;
+		text-align: left;
+		padding: 1rem 1.25rem;
+		background: #1e293b;
+		border: 1px solid #334155;
+		border-radius: 0.5rem;
+		color: #e2e8f0;
+		font-size: 1rem;
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
+	}
+
+	.option-btn:hover:not(:disabled) {
+		border-color: #60a5fa;
+		background: #1e3a5f;
+	}
+
+	.option-btn.correct {
+		border-color: #22c55e;
+		background: #14532d;
+		color: #bbf7d0;
+	}
+
+	.option-btn.wrong {
+		border-color: #ef4444;
+		background: #7f1d1d;
+		color: #fecaca;
+	}
+
+	.option-btn:disabled {
+		cursor: default;
+	}
+
+	.explanation {
+		padding: 0.875rem 1rem;
+		background: #1e3a5f;
+		border-left: 3px solid #60a5fa;
+		border-radius: 0 0.5rem 0.5rem 0;
+		color: #bfdbfe;
+		font-size: 0.9375rem;
+		line-height: 1.6;
+		margin-bottom: 1rem;
+	}
+
+	#screen-results {
+		text-align: center;
+		padding: 2rem 0;
+	}
+
+	.results-inner {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.score-circle {
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.5rem;
+		font-weight: 700;
+		background: #1e293b;
+		border: 4px solid #334155;
+	}
+
+	.score-circle.excellent {
+		border-color: #22c55e;
+		color: #22c55e;
+	}
+
+	.score-circle.good {
+		border-color: #f59e0b;
+		color: #f59e0b;
+	}
+
+	.score-circle.poor {
+		border-color: #ef4444;
+		color: #ef4444;
+	}
+
+	#result-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.result-detail {
+		color: #64748b;
+	}
+
+	.result-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		justify-content: center;
+		margin-top: 0.5rem;
+	}
+
+	.btn-primary {
+		padding: 0.75rem 2rem;
+		background: #3b82f6;
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.btn-primary:hover {
+		background: #2563eb;
+	}
+
+	.btn-secondary {
+		padding: 0.75rem 2rem;
+		background: #1e293b;
+		color: #e2e8f0;
+		border: 1px solid #334155;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.btn-secondary:hover {
+		background: #334155;
+	}
+
+	.btn-outline {
+		display: inline-block;
+		padding: 0.75rem 2rem;
+		background: transparent;
+		color: #60a5fa;
+		border: 1px solid #3b82f6;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.btn-outline:hover {
+		background: #1e3a5f;
+	}
+
+	.hidden {
+		display: none !important;
+	}
+</style>

@@ -1,0 +1,450 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+import type { Option, QuestionWithOptions, Quiz } from "../lib/db";
+
+const { slug } = Astro.params;
+
+const quiz = await env.DB.prepare("SELECT * FROM quizzes WHERE slug = ?")
+	.bind(slug)
+	.first<Quiz>();
+
+if (!quiz) {
+	return Astro.redirect("/");
+}
+
+const { results: questions } = await env.DB.prepare(
+	'SELECT * FROM questions WHERE quiz_id = ? ORDER BY "order" ASC, id ASC'
+)
+	.bind(quiz.id)
+	.all<QuestionWithOptions>();
+
+for (const q of questions) {
+	const { results: options } = await env.DB.prepare(
+		'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+	)
+		.bind(q.id)
+		.all<Option>();
+	q.options = options;
+}
+
+const quizJson = JSON.stringify({ ...quiz, questions });
+---
+
+<Layout title={quiz.title}>
+	<div class="quiz-header">
+		{quiz.subject && <span class="subject">{quiz.subject}</span>}
+		<h1>{quiz.title}</h1>
+		{quiz.description && <p class="description">{quiz.description}</p>}
+	</div>
+
+	<div id="quiz-root" data-quiz={quizJson}>
+		<!-- Start screen -->
+		<div id="screen-start">
+			<p class="meta">{questions.length} perguntas</p>
+			<button id="btn-start" class="btn-primary">Começar Quiz</button>
+		</div>
+
+		<!-- Player screen -->
+		<div id="screen-player" class="hidden">
+			<div class="progress-bar">
+				<div id="progress-fill"></div>
+			</div>
+			<p class="counter">
+				Pergunta <span id="q-current">1</span> de <span id="q-total"
+					>{questions.length}</span
+				>
+			</p>
+			<div id="q-text" class="question-text"></div>
+			<div id="q-options" class="options-list"></div>
+			<div id="q-explanation" class="explanation hidden"></div>
+			<button id="btn-next" class="btn-primary hidden">Próxima</button>
+		</div>
+
+		<!-- Results screen -->
+		<div id="screen-results" class="hidden">
+			<div class="results-inner">
+				<div id="score-circle" class="score-circle">
+					<span id="score-label"></span>
+				</div>
+				<h2 id="result-title"></h2>
+				<p id="result-detail" class="result-detail"></p>
+				<div class="result-actions">
+					<button id="btn-retry" class="btn-secondary">Tentar Novamente</button>
+					<a href="/" class="btn-outline">Outros Quizzes</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<script>
+	interface Option {
+		id: number;
+		text: string;
+		is_correct: number;
+	}
+	interface Question {
+		id: number;
+		text: string;
+		explanation: string | null;
+		options: Option[];
+	}
+	interface QuizData {
+		id: number;
+		questions: Question[];
+	}
+
+	const root = document.getElementById("quiz-root")!;
+	const quiz: QuizData = JSON.parse(root.dataset.quiz!);
+	const questions = quiz.questions;
+
+	let current = 0;
+	let correct = 0;
+	let answered = false;
+
+	const $ = (id: string) => document.getElementById(id)!;
+	const show = (el: HTMLElement) => el.classList.remove("hidden");
+	const hide = (el: HTMLElement) => el.classList.add("hidden");
+
+	function renderQuestion() {
+		answered = false;
+		const q = questions[current];
+		$("q-current").textContent = String(current + 1);
+		$("q-text").textContent = q.text;
+		$("q-options").innerHTML = "";
+		const expEl = $("q-explanation");
+		expEl.textContent = "";
+		hide(expEl);
+		hide($("btn-next"));
+		$("btn-next").textContent =
+			current === questions.length - 1 ? "Ver Resultado" : "Próxima";
+
+		const pct = (current / questions.length) * 100;
+		($("progress-fill") as HTMLElement).style.width = `${pct}%`;
+
+		q.options.forEach((opt, i) => {
+			const btn = document.createElement("button");
+			btn.className = "option-btn";
+			btn.textContent = opt.text;
+			btn.addEventListener("click", () => selectOption(i));
+			$("q-options").appendChild(btn);
+		});
+	}
+
+	function selectOption(chosenIndex: number) {
+		if (answered) return;
+		answered = true;
+
+		const q = questions[current];
+		const isCorrect = !!q.options[chosenIndex].is_correct;
+		if (isCorrect) correct++;
+
+		const btns = $("q-options").querySelectorAll(".option-btn");
+		btns.forEach((btn, i) => {
+			(btn as HTMLButtonElement).disabled = true;
+			if (q.options[i].is_correct) btn.classList.add("correct");
+			else if (i === chosenIndex) btn.classList.add("wrong");
+		});
+
+		if (q.explanation) {
+			const expEl = $("q-explanation");
+			expEl.textContent = q.explanation;
+			show(expEl);
+		}
+
+		show($("btn-next"));
+	}
+
+	function showResults() {
+		hide($("screen-player"));
+		show($("screen-results"));
+		($("progress-fill") as HTMLElement).style.width = "100%";
+
+		const total = questions.length;
+		const pct = Math.round((correct / total) * 100);
+		$("score-label").textContent = `${correct}/${total}`;
+		$("result-detail").textContent = `${pct}% de respostas corretas`;
+
+		const circle = $("score-circle");
+		if (pct >= 80) {
+			circle.classList.add("excellent");
+			$("result-title").textContent = "Excelente!";
+		} else if (pct >= 60) {
+			circle.classList.add("good");
+			$("result-title").textContent = "Bom trabalho!";
+		} else {
+			circle.classList.add("poor");
+			$("result-title").textContent = "Continua a tentar!";
+		}
+
+		fetch("/api/attempts", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ quiz_id: quiz.id, score: correct, total }),
+		}).catch(() => {});
+	}
+
+	$("btn-start").addEventListener("click", () => {
+		hide($("screen-start"));
+		show($("screen-player"));
+		renderQuestion();
+	});
+
+	$("btn-next").addEventListener("click", () => {
+		if (current < questions.length - 1) {
+			current++;
+			renderQuestion();
+		} else {
+			showResults();
+		}
+	});
+
+	$("btn-retry").addEventListener("click", () => {
+		current = 0;
+		correct = 0;
+		$("score-circle").className = "score-circle";
+		hide($("screen-results"));
+		show($("screen-player"));
+		renderQuestion();
+	});
+</script>
+
+<style>
+	.quiz-header {
+		margin-bottom: 2rem;
+	}
+
+	.subject {
+		display: inline-block;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #60a5fa;
+		margin-bottom: 0.5rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+		margin-bottom: 0.5rem;
+	}
+
+	.description {
+		color: #94a3b8;
+		line-height: 1.6;
+	}
+
+	/* Start screen */
+	#screen-start {
+		text-align: center;
+		padding: 3rem 0;
+	}
+
+	.meta {
+		color: #64748b;
+		margin-bottom: 1.5rem;
+		font-size: 1.125rem;
+	}
+
+	/* Progress */
+	.progress-bar {
+		height: 4px;
+		background: #1e293b;
+		border-radius: 2px;
+		margin-bottom: 1rem;
+		overflow: hidden;
+	}
+
+	#progress-fill {
+		height: 100%;
+		background: #60a5fa;
+		transition: width 0.3s ease;
+		width: 0%;
+	}
+
+	.counter {
+		color: #64748b;
+		font-size: 0.875rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.question-text {
+		font-size: 1.25rem;
+		font-weight: 600;
+		line-height: 1.5;
+		margin-bottom: 1.5rem;
+	}
+
+	.options-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.option-btn {
+		width: 100%;
+		text-align: left;
+		padding: 1rem 1.25rem;
+		background: #1e293b;
+		border: 1px solid #334155;
+		border-radius: 0.5rem;
+		color: #e2e8f0;
+		font-size: 1rem;
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
+	}
+
+	.option-btn:hover:not(:disabled) {
+		border-color: #60a5fa;
+		background: #1e3a5f;
+	}
+
+	.option-btn.correct {
+		border-color: #22c55e;
+		background: #14532d;
+		color: #bbf7d0;
+	}
+
+	.option-btn.wrong {
+		border-color: #ef4444;
+		background: #7f1d1d;
+		color: #fecaca;
+	}
+
+	.option-btn:disabled {
+		cursor: default;
+	}
+
+	.explanation {
+		padding: 0.875rem 1rem;
+		background: #1e3a5f;
+		border-left: 3px solid #60a5fa;
+		border-radius: 0 0.5rem 0.5rem 0;
+		color: #bfdbfe;
+		font-size: 0.9375rem;
+		line-height: 1.6;
+		margin-bottom: 1rem;
+	}
+
+	/* Results */
+	#screen-results {
+		text-align: center;
+		padding: 2rem 0;
+	}
+
+	.results-inner {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.score-circle {
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.5rem;
+		font-weight: 700;
+		background: #1e293b;
+		border: 4px solid #334155;
+	}
+
+	.score-circle.excellent {
+		border-color: #22c55e;
+		color: #22c55e;
+	}
+
+	.score-circle.good {
+		border-color: #f59e0b;
+		color: #f59e0b;
+	}
+
+	.score-circle.poor {
+		border-color: #ef4444;
+		color: #ef4444;
+	}
+
+	#result-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.result-detail {
+		color: #64748b;
+	}
+
+	.result-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		justify-content: center;
+		margin-top: 0.5rem;
+	}
+
+	/* Buttons */
+	.btn-primary {
+		padding: 0.75rem 2rem;
+		background: #3b82f6;
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.btn-primary:hover {
+		background: #2563eb;
+	}
+
+	.btn-secondary {
+		padding: 0.75rem 2rem;
+		background: #1e293b;
+		color: #e2e8f0;
+		border: 1px solid #334155;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			background 0.15s,
+			border-color 0.15s;
+	}
+
+	.btn-secondary:hover {
+		background: #334155;
+	}
+
+	.btn-outline {
+		display: inline-block;
+		padding: 0.75rem 2rem;
+		background: transparent;
+		color: #60a5fa;
+		border: 1px solid #3b82f6;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition:
+			background 0.15s,
+			color 0.15s;
+	}
+
+	.btn-outline:hover {
+		background: #1e3a5f;
+	}
+
+	.hidden {
+		display: none !important;
+	}
+</style>
