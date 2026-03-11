@@ -1,5 +1,9 @@
-type Runtime = import("@astrojs/cloudflare").Runtime<Env>;
+/// <reference types="@cloudflare/workers-types" />
 
-declare namespace App {
-	interface Locals extends Runtime {}
+// Augmenta o módulo cloudflare:workers com os bindings desta app
+declare module "cloudflare:workers" {
+	interface Env {
+		DB: D1Database;
+		ASSETS: Fetcher;
+	}
 }
