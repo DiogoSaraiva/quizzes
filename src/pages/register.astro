@@ -9,6 +9,7 @@ const success = Astro.url.searchParams.get("success");
 const errors: Record<string, string> = {
 	exists: "Este username ou email já está registado.",
 	invalid: "Preenche todos os campos corretamente.",
+	username: "Username inválido. Usa apenas letras, números, hífen ou underscore.",
 	password: "A password deve ter pelo menos 8 caracteres.",
 };
 ---
@@ -29,7 +30,14 @@ const errors: Record<string, string> = {
 			<form method="POST" action="/api/auth/register">
 				<label>
 					Username
-					<input type="text" name="username" required autocomplete="username" />
+					<input
+						type="text"
+						name="username"
+						required
+						autocomplete="username"
+						pattern="[A-Za-z0-9_-]+"
+						title="Usa apenas letras, números, hífen ou underscore"
+					/>
 				</label>
 				<label>
 					Email
