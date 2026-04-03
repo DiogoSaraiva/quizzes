@@ -133,7 +133,7 @@ const currentUser = Astro.locals.user;
 	}
 
 	.subtitle {
-		color: #64748b;
+		color: var(--q-text-subtle);
 		font-size: 0.9375rem;
 	}
 
@@ -150,25 +150,25 @@ const currentUser = Astro.locals.user;
 		font-size: 0.8125rem;
 		font-weight: 500;
 		text-decoration: none;
-		background: #1e293b;
-		color: #94a3b8;
-		border: 1px solid #334155;
+		background: var(--q-surface);
+		color: var(--q-text-muted);
+		border: 1px solid var(--q-border);
 		transition: background 0.15s, color 0.15s, border-color 0.15s;
 	}
 
 	.filter-btn:hover {
-		color: #e2e8f0;
-		border-color: #475569;
+		color: var(--q-text);
+		border-color: var(--q-border-hover);
 	}
 
 	.filter-btn.active {
-		background: #1e3a5f;
-		color: #60a5fa;
-		border-color: #3b82f6;
+		background: var(--q-accent-bg);
+		color: var(--q-accent-light);
+		border-color: var(--q-accent);
 	}
 
 	.empty {
-		color: #475569;
+		color: var(--q-border-hover);
 		padding: 3rem 0;
 		text-align: center;
 	}
@@ -190,17 +190,17 @@ const currentUser = Astro.locals.user;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #475569;
-		border-bottom: 1px solid #1e293b;
+		color: var(--q-border-hover);
+		border-bottom: 1px solid var(--q-surface);
 	}
 
 	tbody tr {
-		border-bottom: 1px solid #0f172a;
+		border-bottom: 1px solid var(--q-bg);
 		transition: background 0.1s;
 	}
 
 	tbody tr:hover {
-		background: #1e293b;
+		background: var(--q-surface);
 	}
 
 	tbody tr.row-me {
@@ -208,7 +208,7 @@ const currentUser = Astro.locals.user;
 	}
 
 	tbody tr.row-me:hover {
-		background: #1e3a5f;
+		background: var(--q-accent-bg);
 	}
 
 	td {
@@ -223,7 +223,7 @@ const currentUser = Astro.locals.user;
 
 	.col-num {
 		text-align: right;
-		color: #94a3b8;
+		color: var(--q-text-muted);
 	}
 
 	.medal {
@@ -231,7 +231,7 @@ const currentUser = Astro.locals.user;
 	}
 
 	.rank-num {
-		color: #475569;
+		color: var(--q-border-hover);
 		font-size: 0.875rem;
 		font-weight: 600;
 	}
@@ -244,11 +244,11 @@ const currentUser = Astro.locals.user;
 
 	.username {
 		font-weight: 500;
-		color: #e2e8f0;
+		color: var(--q-text);
 	}
 
 	.username-me {
-		color: #60a5fa;
+		color: var(--q-accent-light);
 	}
 
 	.you-badge {
@@ -256,9 +256,9 @@ const currentUser = Astro.locals.user;
 		font-weight: 700;
 		padding: 0.1rem 0.4rem;
 		border-radius: 999px;
-		background: #1e3a5f;
-		color: #60a5fa;
-		border: 1px solid #3b82f6;
+		background: var(--q-accent-bg);
+		color: var(--q-accent-light);
+		border: 1px solid var(--q-accent);
 	}
 
 	.accuracy-badge {
@@ -270,8 +270,8 @@ const currentUser = Astro.locals.user;
 	}
 
 	.acc-high {
-		background: #052e16;
-		color: #4ade80;
+		background: var(--q-correct-bg);
+		color: var(--q-correct);
 	}
 
 	.acc-mid {
@@ -280,7 +280,7 @@ const currentUser = Astro.locals.user;
 	}
 
 	.acc-low {
-		background: #1c0404;
-		color: #f87171;
+		background: var(--q-wrong-bg);
+		color: var(--q-wrong);
 	}
 </style>

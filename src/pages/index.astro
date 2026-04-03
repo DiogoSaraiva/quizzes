@@ -92,8 +92,8 @@ for (const quiz of quizzes as Quiz[]) {
 	}
 
 	.subject-card {
-		background: #1e293b;
-		border: 1px solid #334155;
+		background: var(--q-surface);
+		border: 1px solid var(--q-border);
 		border-radius: 0.75rem;
 		overflow: hidden;
 	}
@@ -113,7 +113,7 @@ for (const quiz of quizzes as Quiz[]) {
 	.subject-name::before {
 		content: "▶";
 		font-size: 0.65rem;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		transition: transform 0.2s;
 		flex-shrink: 0;
 	}
@@ -138,11 +138,11 @@ for (const quiz of quizzes as Quiz[]) {
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.625rem 0.875rem;
-		background: #0f172a;
-		border: 1px solid #1e293b;
+		background: var(--q-bg);
+		border: 1px solid var(--q-surface);
 		border-radius: 0.5rem;
 		text-decoration: none;
-		color: #e2e8f0;
+		color: var(--q-text);
 		font-size: 0.9375rem;
 		transition:
 			border-color 0.15s,
@@ -150,19 +150,19 @@ for (const quiz of quizzes as Quiz[]) {
 	}
 
 	.quiz-link:hover {
-		border-color: #3b82f6;
-		background: #1e3a5f;
+		border-color: var(--q-accent);
+		background: var(--q-accent-bg);
 		color: #fff;
 	}
 
 	.quiz-link.exam {
-		border-color: #1d4ed8;
-		background: #1e3a5f;
+		border-color: var(--q-accent);
+		background: var(--q-accent-bg);
 	}
 
 	.quiz-link.exam:hover {
-		border-color: #60a5fa;
-		background: #1e40af;
+		border-color: var(--q-accent-light);
+		background: var(--q-accent-hover);
 	}
 
 	.tag-exam {
@@ -172,14 +172,14 @@ for (const quiz of quizzes as Quiz[]) {
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: #fff;
-		background: #2563eb;
+		background: var(--q-accent);
 		border-radius: 0.25rem;
 		padding: 0.1rem 0.4rem;
 		flex-shrink: 0;
 	}
 
 	.topic-group {
-		border-left: 2px solid #334155;
+		border-left: 2px solid var(--q-border);
 		padding-left: 0.75rem;
 		display: flex;
 		flex-direction: column;
@@ -191,7 +191,7 @@ for (const quiz of quizzes as Quiz[]) {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #64748b;
+		color: var(--q-text-subtle);
 		padding: 0.25rem 0;
 	}
 
@@ -202,7 +202,7 @@ for (const quiz of quizzes as Quiz[]) {
 	}
 
 	.empty {
-		color: #64748b;
+		color: var(--q-text-subtle);
 		text-align: center;
 		padding: 3rem;
 	}

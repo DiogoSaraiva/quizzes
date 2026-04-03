@@ -294,7 +294,7 @@ const examJson = JSON.stringify({ subject, questions });
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		margin-bottom: 0.5rem;
 	}
 
@@ -306,7 +306,7 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.description {
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		line-height: 1.6;
 	}
 
@@ -316,7 +316,7 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.meta {
-		color: #64748b;
+		color: var(--q-text-subtle);
 		margin-bottom: 1.5rem;
 		font-size: 1.125rem;
 	}
@@ -327,7 +327,7 @@ const examJson = JSON.stringify({ subject, questions });
 
 	.saved-text {
 		font-size: 0.9375rem;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		margin-bottom: 1rem;
 	}
 
@@ -340,7 +340,7 @@ const examJson = JSON.stringify({ subject, questions });
 
 	.progress-bar {
 		height: 4px;
-		background: #1e293b;
+		background: var(--q-surface);
 		border-radius: 2px;
 		margin-bottom: 1rem;
 		overflow: hidden;
@@ -348,13 +348,13 @@ const examJson = JSON.stringify({ subject, questions });
 
 	#progress-fill {
 		height: 100%;
-		background: #60a5fa;
+		background: var(--q-accent-light);
 		transition: width 0.3s ease;
 		width: 0%;
 	}
 
 	.counter {
-		color: #64748b;
+		color: var(--q-text-subtle);
 		font-size: 0.875rem;
 		margin-bottom: 1.5rem;
 	}
@@ -379,10 +379,10 @@ const examJson = JSON.stringify({ subject, questions });
 		align-items: center;
 		gap: 0.875rem;
 		padding: 0.875rem 1rem;
-		background: #0f172a;
-		border: 1.5px solid #1e293b;
+		background: var(--q-bg);
+		border: 1.5px solid var(--q-surface);
 		border-radius: 0.75rem;
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		font-size: 1rem;
 		cursor: pointer;
 		transition:
@@ -402,11 +402,11 @@ const examJson = JSON.stringify({ subject, questions });
 		align-items: center;
 		justify-content: center;
 		border-radius: 0.4rem;
-		background: #1e293b;
-		border: 1px solid #334155;
+		background: var(--q-surface);
+		border: 1px solid var(--q-border);
 		font-size: 0.75rem;
 		font-weight: 700;
-		color: #475569;
+		color: var(--q-border-hover);
 		transition:
 			background 0.15s,
 			border-color 0.15s,
@@ -419,39 +419,39 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.option-btn:hover:not(:disabled) {
-		border-color: #3b82f6;
-		color: #e2e8f0;
+		border-color: var(--q-accent);
+		color: var(--q-text);
 		transform: translateX(3px);
 	}
 
 	.option-btn:hover:not(:disabled) .option-letter {
-		background: #1e3a5f;
-		border-color: #3b82f6;
-		color: #60a5fa;
+		background: var(--q-accent-bg);
+		border-color: var(--q-accent);
+		color: var(--q-accent-light);
 	}
 
 	.option-btn.correct {
-		border-color: #22c55e;
-		background: #052e16;
-		color: #bbf7d0;
+		border-color: var(--q-correct);
+		background: var(--q-correct-bg);
+		color: var(--q-correct-text);
 	}
 
 	.option-btn.correct .option-letter {
-		background: #166534;
-		border-color: #22c55e;
-		color: #4ade80;
+		background: var(--q-correct-bg);
+		border-color: var(--q-correct);
+		color: var(--q-correct);
 	}
 
 	.option-btn.wrong {
-		border-color: #ef4444;
-		background: #1c0404;
-		color: #fecaca;
+		border-color: var(--q-wrong);
+		background: var(--q-wrong-bg);
+		color: var(--q-wrong-text);
 	}
 
 	.option-btn.wrong .option-letter {
-		background: #7f1d1d;
-		border-color: #ef4444;
-		color: #f87171;
+		background: var(--q-wrong-bg);
+		border-color: var(--q-wrong);
+		color: var(--q-wrong);
 	}
 
 	.option-btn:disabled {
@@ -464,10 +464,10 @@ const examJson = JSON.stringify({ subject, questions });
 
 	.explanation {
 		padding: 0.875rem 1rem;
-		background: #1e3a5f;
-		border-left: 3px solid #60a5fa;
+		background: var(--q-accent-bg);
+		border-left: 3px solid var(--q-accent-light);
 		border-radius: 0 0.5rem 0.5rem 0;
-		color: #bfdbfe;
+		color: var(--q-accent-text);
 		font-size: 0.9375rem;
 		line-height: 1.6;
 		margin-bottom: 1rem;
@@ -494,13 +494,13 @@ const examJson = JSON.stringify({ subject, questions });
 		justify-content: center;
 		font-size: 1.5rem;
 		font-weight: 700;
-		background: #1e293b;
-		border: 4px solid #334155;
+		background: var(--q-surface);
+		border: 4px solid var(--q-border);
 	}
 
 	.score-circle.excellent {
-		border-color: #22c55e;
-		color: #22c55e;
+		border-color: var(--q-correct);
+		color: var(--q-correct);
 	}
 
 	.score-circle.good {
@@ -509,8 +509,8 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.score-circle.poor {
-		border-color: #ef4444;
-		color: #ef4444;
+		border-color: var(--q-wrong);
+		color: var(--q-wrong);
 	}
 
 	#result-title {
@@ -519,7 +519,7 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.result-detail {
-		color: #64748b;
+		color: var(--q-text-subtle);
 	}
 
 	.result-actions {
@@ -532,7 +532,7 @@ const examJson = JSON.stringify({ subject, questions });
 
 	.btn-primary {
 		padding: 0.75rem 2rem;
-		background: #3b82f6;
+		background: var(--q-accent);
 		color: white;
 		border: none;
 		border-radius: 0.5rem;
@@ -543,14 +543,14 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.btn-primary:hover {
-		background: #2563eb;
+		background: var(--q-accent-hover);
 	}
 
 	.btn-secondary {
 		padding: 0.75rem 2rem;
-		background: #1e293b;
-		color: #e2e8f0;
-		border: 1px solid #334155;
+		background: var(--q-surface);
+		color: var(--q-text);
+		border: 1px solid var(--q-border);
 		border-radius: 0.5rem;
 		font-size: 1rem;
 		font-weight: 600;
@@ -558,15 +558,15 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.btn-secondary:hover {
-		background: #334155;
+		background: var(--q-border);
 	}
 
 	.btn-outline {
 		display: inline-block;
 		padding: 0.75rem 2rem;
 		background: transparent;
-		color: #60a5fa;
-		border: 1px solid #3b82f6;
+		color: var(--q-accent-light);
+		border: 1px solid var(--q-accent);
 		border-radius: 0.5rem;
 		font-size: 1rem;
 		font-weight: 600;
@@ -574,7 +574,7 @@ const examJson = JSON.stringify({ subject, questions });
 	}
 
 	.btn-outline:hover {
-		background: #1e3a5f;
+		background: var(--q-accent-bg);
 	}
 
 	.hidden {
