@@ -7,7 +7,7 @@ Desenhada para correr como submodulo de um site Astro pai.
 
 ## Setup como submodulo
 
-O quizzes corre como um **Cloudflare Pages project** separado — fica em `quizzes.leandrajose.pt` (ou domínio próprio). A configuração da base de dados fica no repo pai.
+O quizzes corre como um **Cloudflare Worker** separado — fica em `quizzes.example.com` (ou domínio próprio). A configuração da base de dados fica no repo pai.
 
 ### 1. Adicionar ao repo pai
 
@@ -43,9 +43,9 @@ if (!db) { console.error('Binding D1 "quizzes" não encontrado'); process.exit(1
 
 writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
   name: "quizzes",
-  pages_build_output_dir: "dist",
   compatibility_date: parent.compatibility_date,
   compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
+  assets: { binding: "ASSETS", directory: "./dist" },
   d1_databases: [db],
 }, null, "\t"));
 console.log("✓ quizzes/wrangler.jsonc gerado.");
@@ -62,33 +62,24 @@ console.log("✓ quizzes/wrangler.jsonc gerado.");
 ### 3. Criar a base de dados
 
 ```bash
-npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc
+npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc do pai
 npx wrangler d1 execute quizzes --remote --file=quizzes/src/db/schema.sql
 ```
 
-### 4. Criar o Pages project (primeira vez)
+### 4. Secrets
 
 ```bash
 cd quizzes
-npx wrangler pages project create quizzes
+npx wrangler secret put ADMIN_SECRET
 ```
 
-Depois adiciona o domínio personalizado em **Cloudflare Dashboard → Pages → quizzes → Custom domains**.
-
-### 5. Secrets
-
-```bash
-cd quizzes
-npx wrangler pages secret put ADMIN_SECRET
-```
-
-### 6. Deploy
+### 5. Deploy
 
 ```bash
 npm run deploy:quizzes   # a partir do repo pai
 ```
 
-### 7. CI automático (Cloudflare Pages do pai)
+### 6. CI automático (Cloudflare Pages do pai)
 
 No dashboard do Pages project do **site pai**:
 
@@ -98,12 +89,12 @@ No dashboard do Pages project do **site pai**:
    ```
 2. **Settings → Environment variables**, adiciona:
    ```
-   CLOUDFLARE_API_TOKEN = <token com permissão Cloudflare Pages:Edit>
+   CLOUDFLARE_API_TOKEN = <token com permissão Workers:Edit>
    ```
 
-Assim cada push ao repo pai deploya o site pai **e** o Pages project do quizzes.
+Assim cada push ao repo pai deploya o site pai **e** o Worker do quizzes.
 
-### 8. Tema e cores
+### 7. Tema e cores
 
 Cria `public/theme.css` no repo pai para sobrescrever as cores do submodulo:
 
