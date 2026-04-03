@@ -6,35 +6,40 @@ const redirect = (url: URL | string, status = 303) =>
 	new Response(null, { status, headers: { Location: url.toString() } });
 
 export const POST: APIRoute = async ({ request }) => {
-	const form = await request.formData();
-	const username = (form.get("username") as string)?.trim();
-	const email = (form.get("email") as string)?.trim().toLowerCase();
-	const password = form.get("password") as string;
+	try {
+		const form = await request.formData();
+		const username = (form.get("username") as string)?.trim();
+		const email = (form.get("email") as string)?.trim().toLowerCase();
+		const password = form.get("password") as string;
 
-	if (!username || !email || !password) {
-		return redirect(new URL("/register?error=invalid", request.url));
+		if (!username || !email || !password) {
+			return redirect(new URL("/register?error=invalid", request.url));
+		}
+		if (password.length < 8) {
+			return redirect(new URL("/register?error=password", request.url));
+		}
+
+		const existing = await env.DB.prepare(
+			"SELECT id FROM users WHERE username = ? OR email = ?"
+		)
+			.bind(username, email)
+			.first();
+
+		if (existing) {
+			return redirect(new URL("/register?error=exists", request.url));
+		}
+
+		const { hash, salt } = await hashPassword(password);
+
+		await env.DB.prepare(
+			"INSERT INTO users (username, email, password_hash, password_salt) VALUES (?, ?, ?, ?)"
+		)
+			.bind(username, email, hash, salt)
+			.run();
+
+		return redirect(new URL("/register?success=1", request.url));
+	} catch (err) {
+		console.error("POST /api/auth/register error:", err);
+		return new Response("Internal Server Error", { status: 500 });
 	}
-	if (password.length < 8) {
-		return redirect(new URL("/register?error=password", request.url));
-	}
-
-	const existing = await env.DB.prepare(
-		"SELECT id FROM users WHERE username = ? OR email = ?"
-	)
-		.bind(username, email)
-		.first();
-
-	if (existing) {
-		return redirect(new URL("/register?error=exists", request.url));
-	}
-
-	const { hash, salt } = await hashPassword(password);
-
-	await env.DB.prepare(
-		"INSERT INTO users (username, email, password_hash, password_salt) VALUES (?, ?, ?, ?)"
-	)
-		.bind(username, email, hash, salt)
-		.run();
-
-	return redirect(new URL("/register?success=1", request.url));
 };
