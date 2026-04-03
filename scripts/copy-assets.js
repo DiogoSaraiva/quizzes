@@ -18,9 +18,16 @@ if (!existsSync(parentPublic)) {
 }
 
 let copied = 0;
+const parentFiles = readdirSync(parentPublic);
 
 // Favicon
-for (const f of readdirSync(parentPublic).filter(f => f.startsWith("favicon"))) {
+for (const f of parentFiles.filter((f) => f.startsWith("favicon"))) {
+	copyFileSync(join(parentPublic, f), join(publicDir, f));
+	copied++;
+}
+
+// Logo (opcional): qualquer ficheiro com prefixo logo.
+for (const f of parentFiles.filter((f) => f.startsWith("logo"))) {
 	copyFileSync(join(parentPublic, f), join(publicDir, f));
 	copied++;
 }
@@ -36,6 +43,13 @@ const parentIco = join(parentPublic, "favicon.ico");
 const localIco = join(publicDir, "favicon.ico");
 if (!existsSync(parentIco) && existsSync(localIco)) {
 	rmSync(localIco);
+}
+
+// Evita logo antigo local quando o pai não fornece logo.
+if (!parentFiles.some((f) => f.startsWith("logo"))) {
+	for (const f of readdirSync(publicDir).filter((f) => f.startsWith("logo"))) {
+		rmSync(join(publicDir, f));
+	}
 }
 
 if (copied > 0) {
