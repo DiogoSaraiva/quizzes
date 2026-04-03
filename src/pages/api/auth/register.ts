@@ -11,9 +11,13 @@ export const POST: APIRoute = async ({ request }) => {
 		const username = (form.get("username") as string)?.trim();
 		const email = (form.get("email") as string)?.trim().toLowerCase();
 		const password = form.get("password") as string;
+		const usernameRe = /^[A-Za-z0-9_-]+$/;
 
 		if (!username || !email || !password) {
 			return redirect(new URL("/register?error=invalid", request.url));
+		}
+		if (!usernameRe.test(username)) {
+			return redirect(new URL("/register?error=username", request.url));
 		}
 		if (password.length < 8) {
 			return redirect(new URL("/register?error=password", request.url));
