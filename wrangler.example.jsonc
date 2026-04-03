@@ -1,0 +1,31 @@
+/**
+ * Para uso standalone (sem repo pai):
+ *   cp wrangler.example.jsonc wrangler.jsonc
+ *   npx wrangler d1 create quizzes   → copia o database_id para cá
+ *
+ * Para uso como submodulo: o wrangler.jsonc é gerado automaticamente
+ * pelo script scripts/setup-quizzes.js do repo pai.
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "quizzes",
+	"compatibility_date": "2026-03-10",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "quizzes",
+			"database_id": "SEU_DATABASE_ID_AQUI"
+		}
+	]
+}
