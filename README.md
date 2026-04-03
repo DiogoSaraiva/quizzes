@@ -34,10 +34,11 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const root = dirname(fileURLToPath(import.meta.url)) + "/..";
-const parent = JSON.parse(
-  readFileSync(join(root, "wrangler.jsonc"), "utf-8")
-    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*/gm, "")
-);
+const parentRaw = readFileSync(join(root, "wrangler.jsonc"), "utf-8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g, (_, str) => str ?? "")
+  .replace(/,(\s*[}\]])/g, "$1");
+const parent = JSON.parse(parentRaw);
 const db = parent.d1_databases?.find(d => d.database_name === "quizzes");
 if (!db) { console.error('Binding D1 "quizzes" não encontrado'); process.exit(1); }
 
