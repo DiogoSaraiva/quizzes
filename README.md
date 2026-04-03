@@ -44,7 +44,8 @@ if (!db) { console.error('Binding D1 "quizzes" não encontrado'); process.exit(1
 
 writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
   name: "quizzes",
-  compatibility_date: parent.compatibility_date,
+  // Mantém a runtime date testada do quizzes (não herdar do pai)
+  compatibility_date: "2026-03-10",
   compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
   assets: { binding: "ASSETS", directory: "./dist" },
   d1_databases: [db],
@@ -107,7 +108,25 @@ No dashboard do Pages project do **site pai**:
 
 Assim cada push ao repo pai deploya o site pai **e** o Worker do quizzes.
 
-### 7. Tema e cores
+Permissões mínimas recomendadas para o token:
+
+- `Workers Scripts: Edit`
+- `Cloudflare Pages: Edit`
+- `User Details: Read`
+- `Memberships: Read`
+
+### 7. Tema e favicon
+
+Para o quizzes herdar o visual do pai:
+
+1. Cria `public/theme.css` no repo pai.
+2. Garante `public/favicon.svg` no repo pai.
+
+O submodulo copia automaticamente `theme.css` e ficheiros `favicon*` do pai antes do build.
+
+Nota: atualmente o quizzes usa `favicon.svg` (não depende de `favicon.ico`).
+
+### 8. Exemplo de tema
 
 Cria `public/theme.css` no repo pai para sobrescrever as cores do submodulo:
 
@@ -133,6 +152,16 @@ Cria `public/theme.css` no repo pai para sobrescrever as cores do submodulo:
 ```
 
 O favicon e o `theme.css` são copiados automaticamente antes de cada build.
+
+### 9. Um D1 para vários repos pai
+
+Podes usar o mesmo `database_id` em múltiplos repos pai sem problema. Cada pai só precisa:
+
+- binding `DB` no `wrangler.jsonc`
+- script `setup-quizzes.js`
+- `deploy:quizzes` no `package.json`
+
+Se quiseres isolamento por ambiente/site, cria D1s separadas (`quizzes-dev`, `quizzes-prod`, etc.).
 
 ---
 
@@ -197,6 +226,60 @@ options        (id, question_id, text, is_correct, order)
 attempts       (id, quiz_id, user_id, score, total, completed_at)
 quiz_progress  (user_id, type, ref, current, correct, updated_at)
 ```
+
+---
+
+## Troubleshooting
+
+### `[object Object]` em vez de HTML
+
+Sintoma:
+
+- `https://quizzes.../login` devolve apenas `[object Object]` com `content-length: 15`.
+
+Causas comuns e correções:
+
+- O deploy estava a usar um commit antigo do submodulo `quizzes`.
+: atualiza o ponteiro do submodulo no repo pai (`git add quizzes && git commit && git push`).
+- Exceções não tratadas no middleware/API.
+: garantir `try/catch` e respostas explícitas (`Internal Server Error`) em rotas críticas.
+- `compatibility_date` incorreta gerada pelo repo pai.
+: no `setup-quizzes.js`, manter `compatibility_date: "2026-03-10"` para o Worker quizzes.
+
+### `ParseError: PropertyNameExpected` no `wrangler.jsonc`
+
+Sintoma:
+
+- Cloudflare Pages mostra parse error ao ler `wrangler.jsonc`.
+
+Correção:
+
+- remover blocos de comentários/template dentro do objeto JSONC que deixam vírgula final inválida após parsing.
+- validar localmente o ficheiro antes do push.
+
+### `Authentication error [code: 10000]` em `/memberships`
+
+Sintoma:
+
+- `wrangler deploy` falha em ambiente não interativo.
+
+Correção:
+
+- definir `CLOUDFLARE_API_TOKEN` no Pages project.
+- garantir permissões do token:
+: `Workers Scripts: Edit`, `Cloudflare Pages: Edit`, `User Details: Read`, `Memberships: Read`.
+
+### Tema/favicon não herdados do pai
+
+Sintoma:
+
+- quizzes abre sem o tema do site pai ou com favicon antigo.
+
+Correção:
+
+- criar `public/theme.css` no repo pai.
+- garantir `public/favicon.svg` no repo pai.
+- correr deploy para copiar assets no `prebuild` do submodulo.
 
 ---
 
