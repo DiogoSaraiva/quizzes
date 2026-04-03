@@ -8,6 +8,9 @@
  */
 
 import { execSync } from "child_process";
+import { writeFileSync, unlinkSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 const slug = process.argv[2];
 const isLocal = process.argv.includes("--local");
@@ -17,9 +20,19 @@ if (!slug) {
 	process.exit(1);
 }
 
-const safeSlug = slug.replace(/'/g, "''");
-const localFlag = isLocal ? " --local" : "";
-const cmd = `npx wrangler d1 execute quizzes --command "DELETE FROM quizzes WHERE slug = '${safeSlug}'"${localFlag}`;
+// Slugs só podem conter letras minúsculas, números e hífens
+if (!/^[a-z0-9-]+$/.test(slug)) {
+	console.error(`Slug inválido: "${slug}". Apenas letras minúsculas, números e hífens são permitidos.`);
+	process.exit(1);
+}
+
+// Usa --file em vez de --command para evitar shell injection
+const sql = `DELETE FROM quizzes WHERE slug = '${slug}';`;
+const tmpFile = join(tmpdir(), `delete-quiz-${Date.now()}.sql`);
+writeFileSync(tmpFile, sql);
+
+const locationFlag = isLocal ? " --local" : " --remote";
+const cmd = `npx wrangler d1 execute quizzes --file="${tmpFile}"${locationFlag}`;
 
 try {
 	execSync(cmd, { stdio: "inherit" });
@@ -27,4 +40,6 @@ try {
 } catch {
 	console.error("✗ Erro ao apagar.");
 	process.exit(1);
+} finally {
+	unlinkSync(tmpFile);
 }

@@ -43,6 +43,31 @@ export interface QuizWithQuestions extends Quiz {
  * - topic: tema (ex: "Sistema Nervoso") — omitir para quiz geral da cadeira
  * - slug: único, ex: "anatomia-sistema-nervoso-1"
  */
+export interface User {
+	id: number;
+	username: string;
+	email: string;
+	password_hash: string;
+	password_salt: string;
+	approved: number; // 0 | 1
+	created_at: string;
+}
+
+export interface Session {
+	id: string;
+	user_id: number;
+	expires_at: string;
+}
+
+export interface Attempt {
+	id: number;
+	quiz_id: number;
+	user_id: number | null;
+	score: number;
+	total: number;
+	completed_at: string;
+}
+
 export interface QuizImport {
 	title: string;
 	description?: string;

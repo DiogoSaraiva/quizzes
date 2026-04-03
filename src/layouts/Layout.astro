@@ -6,6 +6,8 @@ interface Props {
 
 const { title = "Quizzes", description = "Plataforma de quizzes interativos" } =
 	Astro.props;
+
+const user = Astro.locals.user;
 // Favicon: substitui public/favicon.svg e public/favicon.ico pelo logo do site pai.
 ---
 
@@ -24,11 +26,25 @@ const { title = "Quizzes", description = "Plataforma de quizzes interativos" } =
 		<header>
 			<nav>
 				<a href="/" class="brand">Quizzes</a>
+				<div class="nav-right">
+					<a href="/leaderboard" class="nav-link">Leaderboard</a>
+					{user ? (
+						<>
+							<span class="nav-user">{user.username}</span>
+							<a href="/api/auth/logout" class="nav-link">Sair</a>
+						</>
+					) : (
+						<a href="/login" class="nav-link">Entrar</a>
+					)}
+				</div>
 			</nav>
 		</header>
 		<main>
 			<slot />
 		</main>
+		<footer>
+			<a href="/privacy" class="footer-link">Política de Privacidade</a>
+		</footer>
 	</body>
 </html>
 
@@ -56,6 +72,9 @@ const { title = "Quizzes", description = "Plataforma de quizzes interativos" } =
 	nav {
 		max-width: 900px;
 		margin: 0 auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 	}
 
 	.brand {
@@ -66,9 +85,49 @@ const { title = "Quizzes", description = "Plataforma de quizzes interativos" } =
 		letter-spacing: -0.025em;
 	}
 
+	.nav-right {
+		display: flex;
+		align-items: center;
+		gap: 1.25rem;
+	}
+
+	.nav-link {
+		font-size: 0.875rem;
+		color: #94a3b8;
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	.nav-link:hover {
+		color: #e2e8f0;
+	}
+
+	.nav-user {
+		font-size: 0.875rem;
+		color: #60a5fa;
+		font-weight: 600;
+	}
+
 	main {
 		max-width: 900px;
 		margin: 0 auto;
 		padding: 2rem;
+	}
+
+	footer {
+		border-top: 1px solid #1e293b;
+		padding: 1.25rem 2rem;
+		text-align: center;
+	}
+
+	.footer-link {
+		font-size: 0.75rem;
+		color: #334155;
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	.footer-link:hover {
+		color: #64748b;
 	}
 </style>
