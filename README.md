@@ -74,10 +74,22 @@ npm run deploy:quizzes   # a partir do repo pai
 
 ### 5. Secrets
 
+Gera um valor aleatório para o `ADMIN_SECRET` (password da API de admin):
+
+```bash
+openssl rand -hex 32
+```
+
+Depois adiciona-o ao Worker (o wrangler pede o valor interativamente):
+
 ```bash
 cd quizzes
 npx wrangler secret put ADMIN_SECRET
 ```
+
+Guarda o valor num password manager — precisas dele para importar e apagar quizzes.
+
+> **Vários sites, um Worker** — se vários sites partilharem o mesmo Worker (e a mesma D1), basta um único `ADMIN_SECRET`. Se quiseres dados isolados por site, cria um Worker separado por cada um e corre o comando com `--name quizzes-nome-do-site`.
 
 ### 6. CI automático (Cloudflare Pages do pai)
 
