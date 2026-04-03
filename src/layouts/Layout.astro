@@ -26,7 +26,15 @@ const user = Astro.locals.user;
 	<body>
 		<header>
 			<nav>
-				<a href="/" class="brand">Quizzes</a>
+				<a href="/" class="brand">
+					<img
+						src="/logo.svg"
+						alt="Logo"
+						class="brand-logo"
+						onerror="if (this.src.endsWith('/logo.svg')) { this.src='/favicon.svg'; } else { this.style.display='none'; }"
+					/>
+					<span>Quizzes</span>
+				</a>
 				<div class="nav-right">
 					<a href="/leaderboard" class="nav-link">Leaderboard</a>
 					{user ? (
@@ -105,11 +113,21 @@ const user = Astro.locals.user;
 	}
 
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
 		font-size: 1.25rem;
 		font-weight: 700;
 		color: var(--q-accent-light);
 		text-decoration: none;
 		letter-spacing: -0.025em;
+	}
+
+	.brand-logo {
+		width: 1.5rem;
+		height: 1.5rem;
+		object-fit: contain;
+		flex: 0 0 auto;
 	}
 
 	.nav-right {
