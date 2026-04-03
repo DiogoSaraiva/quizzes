@@ -5,27 +5,37 @@ import type { Option, QuestionWithOptions, Quiz } from "../lib/db";
 
 const { slug } = Astro.params;
 
-const quiz = await env.DB.prepare("SELECT * FROM quizzes WHERE slug = ?")
-	.bind(slug)
-	.first<Quiz>();
+let quiz: Quiz | null = null;
+let questions: QuestionWithOptions[] = [];
 
-if (!quiz) {
-	return Astro.redirect("/");
-}
+try {
+	quiz = await env.DB.prepare("SELECT * FROM quizzes WHERE slug = ?")
+		.bind(slug)
+		.first<Quiz>();
 
-const { results: questions } = await env.DB.prepare(
-	'SELECT * FROM questions WHERE quiz_id = ? ORDER BY "order" ASC, id ASC'
-)
-	.bind(quiz.id)
-	.all<QuestionWithOptions>();
+	if (!quiz) {
+		return Astro.redirect("/");
+	}
 
-for (const q of questions) {
-	const { results: options } = await env.DB.prepare(
-		'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+	const questionsResult = await env.DB.prepare(
+		'SELECT * FROM questions WHERE quiz_id = ? ORDER BY "order" ASC, id ASC'
 	)
-		.bind(q.id)
-		.all<Option>();
-	q.options = options;
+		.bind(quiz.id)
+		.all<QuestionWithOptions>();
+
+	questions = questionsResult.results;
+
+	for (const q of questions) {
+		const { results: options } = await env.DB.prepare(
+			'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+		)
+			.bind(q.id)
+			.all<Option>();
+		q.options = options;
+	}
+} catch (err) {
+	console.error("Failed to load quiz:", err);
+	return Astro.redirect("/");
 }
 
 const quizJson = JSON.stringify({ ...quiz, questions });
