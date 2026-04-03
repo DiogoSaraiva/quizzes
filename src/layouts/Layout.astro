@@ -18,6 +18,8 @@ const user = Astro.locals.user;
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
+		<!-- theme.css opcional: copiado do pai por copy-assets.js, sobrescreve as variáveis abaixo -->
+		<link rel="stylesheet" href="/theme.css" />
 		<meta name="generator" content={Astro.generator} />
 		<meta name="description" content={description} />
 		<title>{title} | Quizzes</title>
@@ -48,7 +50,33 @@ const user = Astro.locals.user;
 	</body>
 </html>
 
-<style>
+<style is:global>
+	/* ── Variáveis de tema ─────────────────────────────────────────────────────
+	   O ficheiro public/theme.css (copiado do pai) pode sobrescrever estas vars.
+	   ───────────────────────────────────────────────────────────────────────── */
+	:root {
+		--q-bg:             #0f172a;
+		--q-surface:        #1e293b;
+		--q-surface-hover:  #1e3a5f;
+		--q-border:         #334155;
+		--q-border-hover:   #475569;
+		--q-text:           #e2e8f0;
+		--q-text-muted:     #94a3b8;
+		--q-text-subtle:    #64748b;
+		--q-accent:         #3b82f6;
+		--q-accent-hover:   #2563eb;
+		--q-accent-light:   #60a5fa;
+		--q-accent-bg:      #1e3a5f;
+		--q-accent-text:    #bfdbfe;
+		--q-correct:        #22c55e;
+		--q-correct-bg:     #052e16;
+		--q-correct-text:   #bbf7d0;
+		--q-wrong:          #ef4444;
+		--q-wrong-bg:       #1c0404;
+		--q-wrong-text:     #fecaca;
+		--q-font:           system-ui, -apple-system, sans-serif;
+	}
+
 	*,
 	*::before,
 	*::after {
@@ -58,14 +86,14 @@ const user = Astro.locals.user;
 	}
 
 	body {
-		font-family: system-ui, -apple-system, sans-serif;
-		background: #0f172a;
-		color: #e2e8f0;
+		font-family: var(--q-font);
+		background: var(--q-bg);
+		color: var(--q-text);
 		min-height: 100vh;
 	}
 
 	header {
-		border-bottom: 1px solid #1e293b;
+		border-bottom: 1px solid var(--q-border);
 		padding: 1rem 2rem;
 	}
 
@@ -80,7 +108,7 @@ const user = Astro.locals.user;
 	.brand {
 		font-size: 1.25rem;
 		font-weight: 700;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		text-decoration: none;
 		letter-spacing: -0.025em;
 	}
@@ -93,18 +121,18 @@ const user = Astro.locals.user;
 
 	.nav-link {
 		font-size: 0.875rem;
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		text-decoration: none;
 		transition: color 0.15s;
 	}
 
 	.nav-link:hover {
-		color: #e2e8f0;
+		color: var(--q-text);
 	}
 
 	.nav-user {
 		font-size: 0.875rem;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		font-weight: 600;
 	}
 
@@ -115,19 +143,73 @@ const user = Astro.locals.user;
 	}
 
 	footer {
-		border-top: 1px solid #1e293b;
+		border-top: 1px solid var(--q-border);
 		padding: 1.25rem 2rem;
 		text-align: center;
 	}
 
 	.footer-link {
 		font-size: 0.75rem;
-		color: #334155;
+		color: var(--q-border-hover);
 		text-decoration: none;
 		transition: color 0.15s;
 	}
 
 	.footer-link:hover {
-		color: #64748b;
+		color: var(--q-text-subtle);
+	}
+
+	.hidden {
+		display: none !important;
+	}
+
+	/* Botões globais reutilizados em várias páginas */
+	.btn-primary {
+		padding: 0.75rem 2rem;
+		background: var(--q-accent);
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.btn-primary:hover {
+		background: var(--q-accent-hover);
+	}
+
+	.btn-secondary {
+		padding: 0.75rem 2rem;
+		background: var(--q-surface);
+		color: var(--q-text);
+		border: 1px solid var(--q-border);
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.btn-secondary:hover {
+		background: var(--q-border);
+	}
+
+	.btn-outline {
+		display: inline-block;
+		padding: 0.75rem 2rem;
+		background: transparent;
+		color: var(--q-accent-light);
+		border: 1px solid var(--q-accent);
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: background 0.15s;
+	}
+
+	.btn-outline:hover {
+		background: var(--q-accent-bg);
 	}
 </style>

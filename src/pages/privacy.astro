@@ -84,7 +84,7 @@ import Layout from "../layouts/Layout.astro";
 	}
 
 	.updated {
-		color: #475569;
+		color: var(--q-border-hover);
 		font-size: 0.875rem;
 		margin-bottom: 2rem;
 	}
@@ -92,18 +92,18 @@ import Layout from "../layouts/Layout.astro";
 	h2 {
 		font-size: 1.125rem;
 		font-weight: 600;
-		color: #e2e8f0;
+		color: var(--q-text);
 		margin-top: 2rem;
 		margin-bottom: 0.75rem;
 	}
 
 	p {
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		margin-bottom: 0.75rem;
 	}
 
 	ul {
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		padding-left: 1.5rem;
 		margin-bottom: 0.75rem;
 		display: flex;
@@ -112,20 +112,20 @@ import Layout from "../layouts/Layout.astro";
 	}
 
 	strong {
-		color: #cbd5e1;
+		color: var(--q-text-muted);
 	}
 
 	code {
 		font-family: monospace;
-		background: #1e293b;
+		background: var(--q-surface);
 		padding: 0.1em 0.4em;
 		border-radius: 0.25rem;
 		font-size: 0.875em;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 	}
 
 	a {
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		text-decoration: none;
 	}
 
@@ -143,16 +143,16 @@ import Layout from "../layouts/Layout.astro";
 	th {
 		text-align: left;
 		padding: 0.5rem 0.75rem;
-		background: #1e293b;
-		color: #cbd5e1;
+		background: var(--q-surface);
+		color: var(--q-text-muted);
 		font-weight: 600;
-		border-bottom: 1px solid #334155;
+		border-bottom: 1px solid var(--q-border);
 	}
 
 	td {
 		padding: 0.5rem 0.75rem;
-		color: #94a3b8;
-		border-bottom: 1px solid #1e293b;
+		color: var(--q-text-muted);
+		border-bottom: 1px solid var(--q-surface);
 		vertical-align: top;
 	}
 </style>

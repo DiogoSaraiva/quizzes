@@ -1,19 +1,13 @@
 # Quizzes
 
-App de quizzes de estudo deployada como Cloudflare Worker com D1 (SQLite).
-
-Desenhada para ser usada como submodulo de um site Astro pai — a configuração da base de dados fica toda no pai.
-
-## Stack
-
-- **Astro 6** com `output: 'server'`
-- **Cloudflare Workers** via `@astrojs/cloudflare` v13
-- **Cloudflare D1** (SQLite)
-- Vanilla JS, sem framework frontend
+App de quizzes de estudo como Cloudflare Worker + D1 (SQLite).  
+Desenhada para correr como submodulo de um site Astro pai.
 
 ---
 
-## Uso como submodulo (recomendado)
+## Setup como submodulo
+
+O quizzes corre como um **Cloudflare Pages project** separado — fica em `quizzes.leandrajose.pt` (ou domínio próprio). A configuração da base de dados fica no repo pai.
 
 ### 1. Adicionar ao repo pai
 
@@ -24,19 +18,15 @@ git submodule update --init
 
 ### 2. Configurar o repo pai
 
-No `wrangler.jsonc` do pai, adiciona o binding D1:
+**`wrangler.jsonc`** — adiciona o binding D1:
 
 ```jsonc
 "d1_databases": [
-  {
-    "binding": "DB",
-    "database_name": "quizzes",
-    "database_id": "O-TEU-DATABASE-ID"
-  }
+  { "binding": "DB", "database_name": "quizzes", "database_id": "O-TEU-DATABASE-ID" }
 ]
 ```
 
-Adiciona o script `scripts/setup-quizzes.js` ao repo pai:
+**`scripts/setup-quizzes.js`** — gera o `wrangler.jsonc` do submodulo a partir da config do pai:
 
 ```js
 import { readFileSync, writeFileSync } from "fs";
@@ -44,31 +34,24 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const root = dirname(fileURLToPath(import.meta.url)) + "/..";
-
-const parentRaw = readFileSync(join(root, "wrangler.jsonc"), "utf-8")
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .replace(/^\s*\/\/.*/gm, "");
-const parent = JSON.parse(parentRaw);
-
+const parent = JSON.parse(
+  readFileSync(join(root, "wrangler.jsonc"), "utf-8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*/gm, "")
+);
 const db = parent.d1_databases?.find(d => d.database_name === "quizzes");
-if (!db) {
-  console.error('Binding D1 "quizzes" não encontrado em wrangler.jsonc');
-  process.exit(1);
-}
+if (!db) { console.error('Binding D1 "quizzes" não encontrado'); process.exit(1); }
 
 writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
   name: "quizzes",
+  pages_build_output_dir: "dist",
   compatibility_date: parent.compatibility_date,
   compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
-  assets: { binding: "ASSETS", directory: "./dist" },
-  observability: { enabled: true },
   d1_databases: [db],
 }, null, "\t"));
-
 console.log("✓ quizzes/wrangler.jsonc gerado.");
 ```
 
-No `package.json` do pai:
+**`package.json`** do pai:
 
 ```json
 "scripts": {
@@ -76,49 +59,76 @@ No `package.json` do pai:
 }
 ```
 
-### 3. Aplicar o schema
+### 3. Criar a base de dados
 
 ```bash
-# Local
-npx wrangler d1 execute quizzes --local --file=quizzes/src/db/schema.sql
-
-# Produção
+npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc
 npx wrangler d1 execute quizzes --remote --file=quizzes/src/db/schema.sql
 ```
 
-### 4. Rota no Cloudflare
+### 4. Criar o Pages project (primeira vez)
 
-No `wrangler.jsonc` do pai, adiciona a rota para o Worker de quizzes:
-
-```jsonc
-"routes": [
-  { "pattern": "outrosite.com/quizzes*", "zone_name": "outrosite.com" }
-]
+```bash
+cd quizzes
+npx wrangler pages project create quizzes
 ```
 
-### 5. Favicon
+Depois adiciona o domínio personalizado em **Cloudflare Dashboard → Pages → quizzes → Custom domains**.
 
-O submodulo copia automaticamente o favicon do pai antes de cada build.
-O `public/` do pai deve estar em `../public/` relativamente à pasta `quizzes/`.
+### 5. Secrets
+
+```bash
+cd quizzes
+npx wrangler pages secret put ADMIN_SECRET
+```
 
 ### 6. Deploy
 
 ```bash
-npm run deploy:quizzes
+npm run deploy:quizzes   # a partir do repo pai
 ```
 
-O script gera o `wrangler.jsonc` do submodulo a partir da config do pai e faz deploy.
+### 7. CI automático (Cloudflare Pages do pai)
 
----
+No dashboard do Pages project do **site pai**:
 
-## Uso standalone
+1. **Settings → Build & deployments → Build command**, muda para:
+   ```
+   npm run build && npm run deploy:quizzes
+   ```
+2. **Settings → Environment variables**, adiciona:
+   ```
+   CLOUDFLARE_API_TOKEN = <token com permissão Cloudflare Pages:Edit>
+   ```
 
-```bash
-cp wrangler.example.jsonc wrangler.jsonc
-npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc
-npx wrangler d1 execute quizzes --local --file=src/db/schema.sql
-npm run dev
+Assim cada push ao repo pai deploya o site pai **e** o Pages project do quizzes.
+
+### 8. Tema e cores
+
+Cria `public/theme.css` no repo pai para sobrescrever as cores do submodulo:
+
+```css
+:root {
+  --q-bg: #0f0a0a;
+  --q-surface: #1a1010;
+  --q-border: #3d2020;
+  --q-border-hover: #7a3030;
+  --q-text: #fdf2f2;
+  --q-text-muted: #d4b0b0;
+  --q-text-subtle: #9a7070;
+  --q-accent: #be123c;
+  --q-accent-hover: #9f1239;
+  --q-accent-light: #fb7185;
+  --q-correct: #166534;
+  --q-correct-bg: #052e16;
+  --q-correct-text: #86efac;
+  --q-wrong: #991b1b;
+  --q-wrong-bg: #450a0a;
+  --q-wrong-text: #fca5a5;
+}
 ```
+
+O favicon e o `theme.css` são copiados automaticamente antes de cada build.
 
 ---
 
@@ -127,19 +137,17 @@ npm run dev
 Os registos são aprovados manualmente:
 
 ```bash
-npm run pending-users          # lista pendentes
-npm run approve-user -- <username>   # aprova
+npm run pending-users                    # lista pendentes
+npm run approve-user -- <username>       # aprova
 ```
 
-Para produção, adiciona `--remote` (ou omite `--local`).
+Para produção adiciona `--remote`; para local adiciona `--local`.
 
 ---
 
 ## Importar quizzes
 
-Os quizzes são gerados por IA a partir de slides/documentos. Usa o prompt em [PROMPT.md](PROMPT.md).
-
-Formato do JSON:
+Usa o prompt em [PROMPT.md](PROMPT.md) para gerar o JSON via IA. Formato esperado:
 
 ```json
 {
@@ -188,14 +196,8 @@ quiz_progress  (user_id, type, ref, current, correct, updated_at)
 
 ---
 
-## Scripts
+## Stack
 
-| Comando | Descrição |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run deploy` | Build + deploy para Cloudflare |
-| `npm run generate-types` | Gera tipos TypeScript |
-| `npm run import-quiz -- <file> [--local]` | Importa quiz JSON |
-| `npm run delete-quiz -- <slug> [--local]` | Apaga quiz por slug |
-| `npm run pending-users [--local]` | Lista utilizadores pendentes |
-| `npm run approve-user -- <username> [--local]` | Aprova utilizador |
+- Astro 6 · `output: 'server'` · `@astrojs/cloudflare` v13
+- Cloudflare Pages + D1 (SQLite)
+- Vanilla JS, sem framework frontend

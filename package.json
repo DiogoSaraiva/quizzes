@@ -7,11 +7,12 @@
 	},
 	"scripts": {
 		"dev": "astro dev",
+		"prebuild": "node scripts/copy-assets.js",
 		"build": "astro build",
 		"preview": "astro build && wrangler dev",
 		"astro": "astro",
 		"generate-types": "wrangler types",
-		"deploy": "astro build && wrangler deploy --main dist/_worker.js/index.js",
+		"deploy": "astro build && wrangler pages deploy dist",
 		"cf-typegen": "wrangler types",
 		"import-quiz": "node scripts/import-quiz.js",
 		"delete-quiz": "node scripts/delete-quiz.js",
