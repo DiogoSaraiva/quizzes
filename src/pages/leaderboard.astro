@@ -4,54 +4,67 @@ import { env } from "cloudflare:workers";
 
 const subject = Astro.url.searchParams.get("subject") ?? "";
 
-// Leaderboard global ou por cadeira
-const query = subject
-	? `SELECT u.username,
-	          COUNT(a.id)                                   AS attempts,
-	          SUM(a.score)                                  AS total_correct,
-	          SUM(a.total)                                  AS total_questions,
-	          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
-	   FROM attempts a
-	   JOIN users u ON a.user_id = u.id
-	   JOIN quizzes q ON a.quiz_id = q.id
-	   WHERE u.approved = 1 AND q.subject = ?
-	   GROUP BY u.id, u.username
-	   HAVING total_questions > 0
-	   ORDER BY accuracy DESC, total_correct DESC
-	   LIMIT 25`
-	: `SELECT u.username,
-	          COUNT(a.id)                                   AS attempts,
-	          SUM(a.score)                                  AS total_correct,
-	          SUM(a.total)                                  AS total_questions,
-	          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
-	   FROM attempts a
-	   JOIN users u ON a.user_id = u.id
-	   WHERE u.approved = 1
-	   GROUP BY u.id, u.username
-	   HAVING total_questions > 0
-	   ORDER BY accuracy DESC, total_correct DESC
-	   LIMIT 25`;
+let rows: any[] = [];
+let subjects: any[] = [];
 
-const { results: rows } = subject
-	? await env.DB.prepare(query).bind(subject).all<{
-			username: string;
-			attempts: number;
-			total_correct: number;
-			total_questions: number;
-			accuracy: number;
-	  }>()
-	: await env.DB.prepare(query).all<{
-			username: string;
-			attempts: number;
-			total_correct: number;
-			total_questions: number;
-			accuracy: number;
-	  }>();
+try {
+	// Leaderboard global ou por cadeira
+	const query = subject
+		? `SELECT u.username,
+		          COUNT(a.id)                                   AS attempts,
+		          SUM(a.score)                                  AS total_correct,
+		          SUM(a.total)                                  AS total_questions,
+		          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
+		   FROM attempts a
+		   JOIN users u ON a.user_id = u.id
+		   JOIN quizzes q ON a.quiz_id = q.id
+		   WHERE u.approved = 1 AND q.subject = ?
+		   GROUP BY u.id, u.username
+		   HAVING total_questions > 0
+		   ORDER BY accuracy DESC, total_correct DESC
+		   LIMIT 25`
+		: `SELECT u.username,
+		          COUNT(a.id)                                   AS attempts,
+		          SUM(a.score)                                  AS total_correct,
+		          SUM(a.total)                                  AS total_questions,
+		          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
+		   FROM attempts a
+		   JOIN users u ON a.user_id = u.id
+		   WHERE u.approved = 1
+		   GROUP BY u.id, u.username
+		   HAVING total_questions > 0
+		   ORDER BY accuracy DESC, total_correct DESC
+		   LIMIT 25`;
 
-// Lista de cadeiras para o filtro
-const { results: subjects } = await env.DB.prepare(
-	"SELECT DISTINCT subject FROM quizzes WHERE subject IS NOT NULL ORDER BY subject ASC"
-).all<{ subject: string }>();
+	const leaderboardResult = subject
+		? await env.DB.prepare(query).bind(subject).all<{
+				username: string;
+				attempts: number;
+				total_correct: number;
+				total_questions: number;
+				accuracy: number;
+		  }>()
+		: await env.DB.prepare(query).all<{
+				username: string;
+				attempts: number;
+				total_correct: number;
+				total_questions: number;
+				accuracy: number;
+		  }>();
+
+	rows = leaderboardResult.results;
+
+	// Lista de cadeiras para o filtro
+	const subjectsResult = await env.DB.prepare(
+		"SELECT DISTINCT subject FROM quizzes WHERE subject IS NOT NULL ORDER BY subject ASC"
+	).all<{ subject: string }>();
+
+	subjects = subjectsResult.results;
+} catch (err) {
+	console.error("Failed to load leaderboard data:", err);
+	rows = [];
+	subjects = [];
+}
 
 const currentUser = Astro.locals.user;
 ---

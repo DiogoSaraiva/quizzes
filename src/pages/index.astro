@@ -3,9 +3,15 @@ import Layout from "../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
 import type { Quiz } from "../lib/db";
 
-const { results: quizzes } = await env.DB.prepare(
-	"SELECT id, slug, title, description, subject, topic, topic_order FROM quizzes ORDER BY subject ASC, topic_order ASC, topic ASC NULLS LAST, title ASC"
-).all<Quiz>();
+let quizzes: Quiz[] = [];
+try {
+	const { results } = await env.DB.prepare(
+		"SELECT id, slug, title, description, subject, topic, topic_order FROM quizzes ORDER BY subject ASC, topic_order ASC, topic ASC NULLS LAST, title ASC"
+	).all<Quiz>();
+	quizzes = results;
+} catch (err) {
+	console.error("Failed to load quizzes:", err);
+}
 
 // Agrupar por cadeira → temas
 interface TopicGroup {

@@ -6,26 +6,35 @@ import type { Option, Question } from "../../lib/db";
 const subject = decodeURIComponent(Astro.params.subject ?? "");
 if (!subject) return Astro.redirect("/");
 
-// Buscar todas as perguntas ordenadas por tema → ordem dentro do quiz
-const { results: questions } = await env.DB.prepare(
-	`SELECT q.id, q.text, q.explanation, q.type, q."order"
-	 FROM questions q
-	 JOIN quizzes qz ON q.quiz_id = qz.id
-	 WHERE qz.subject = ?
-	 ORDER BY qz.topic_order ASC, qz.topic ASC NULLS LAST, q."order" ASC, q.id ASC`
-)
-	.bind(subject)
-	.all<Question & { options?: Option[] }>();
+let questions: (Question & { options?: Option[] })[] = [];
 
-if (questions.length === 0) return Astro.redirect("/");
-
-for (const q of questions) {
-	const { results: options } = await env.DB.prepare(
-		'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+try {
+	// Buscar todas as perguntas ordenadas por tema → ordem dentro do quiz
+	const questionsResult = await env.DB.prepare(
+		`SELECT q.id, q.text, q.explanation, q.type, q."order"
+		 FROM questions q
+		 JOIN quizzes qz ON q.quiz_id = qz.id
+		 WHERE qz.subject = ?
+		 ORDER BY qz.topic_order ASC, qz.topic ASC NULLS LAST, q."order" ASC, q.id ASC`
 	)
-		.bind(q.id)
-		.all<Option>();
-	q.options = options;
+		.bind(subject)
+		.all<Question & { options?: Option[] }>();
+
+	questions = questionsResult.results;
+
+	if (questions.length === 0) return Astro.redirect("/");
+
+	for (const q of questions) {
+		const { results: options } = await env.DB.prepare(
+			'SELECT * FROM options WHERE question_id = ? ORDER BY "order" ASC, id ASC'
+		)
+			.bind(q.id)
+			.all<Option>();
+		q.options = options;
+	}
+} catch (err) {
+	console.error("Failed to load exam questions:", err);
+	return Astro.redirect("/");
 }
 
 const examJson = JSON.stringify({ subject, questions });
