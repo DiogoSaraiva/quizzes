@@ -1,0 +1,286 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+
+const subject = Astro.url.searchParams.get("subject") ?? "";
+
+// Leaderboard global ou por cadeira
+const query = subject
+	? `SELECT u.username,
+	          COUNT(a.id)                                   AS attempts,
+	          SUM(a.score)                                  AS total_correct,
+	          SUM(a.total)                                  AS total_questions,
+	          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
+	   FROM attempts a
+	   JOIN users u ON a.user_id = u.id
+	   JOIN quizzes q ON a.quiz_id = q.id
+	   WHERE u.approved = 1 AND q.subject = ?
+	   GROUP BY u.id, u.username
+	   HAVING total_questions > 0
+	   ORDER BY accuracy DESC, total_correct DESC
+	   LIMIT 25`
+	: `SELECT u.username,
+	          COUNT(a.id)                                   AS attempts,
+	          SUM(a.score)                                  AS total_correct,
+	          SUM(a.total)                                  AS total_questions,
+	          ROUND(100.0 * SUM(a.score) / SUM(a.total), 1) AS accuracy
+	   FROM attempts a
+	   JOIN users u ON a.user_id = u.id
+	   WHERE u.approved = 1
+	   GROUP BY u.id, u.username
+	   HAVING total_questions > 0
+	   ORDER BY accuracy DESC, total_correct DESC
+	   LIMIT 25`;
+
+const { results: rows } = subject
+	? await env.DB.prepare(query).bind(subject).all<{
+			username: string;
+			attempts: number;
+			total_correct: number;
+			total_questions: number;
+			accuracy: number;
+	  }>()
+	: await env.DB.prepare(query).all<{
+			username: string;
+			attempts: number;
+			total_correct: number;
+			total_questions: number;
+			accuracy: number;
+	  }>();
+
+// Lista de cadeiras para o filtro
+const { results: subjects } = await env.DB.prepare(
+	"SELECT DISTINCT subject FROM quizzes WHERE subject IS NOT NULL ORDER BY subject ASC"
+).all<{ subject: string }>();
+
+const currentUser = Astro.locals.user;
+---
+
+<Layout title="Leaderboard">
+	<div class="page-header">
+		<h1>Leaderboard</h1>
+		<p class="subtitle">Top 25 {subject ? `· ${subject}` : "· Geral"}</p>
+	</div>
+
+	<div class="filters">
+		<a href="/leaderboard" class:list={["filter-btn", { active: !subject }]}>Geral</a>
+		{subjects.map((s) => (
+			<a
+				href={`/leaderboard?subject=${encodeURIComponent(s.subject)}`}
+				class:list={["filter-btn", { active: subject === s.subject }]}
+			>
+				{s.subject}
+			</a>
+		))}
+	</div>
+
+	{rows.length === 0 ? (
+		<p class="empty">Ainda não há resultados.</p>
+	) : (
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th class="col-rank">#</th>
+						<th>Utilizador</th>
+						<th class="col-num">Perguntas</th>
+						<th class="col-num">Corretas</th>
+						<th class="col-num">Precisão</th>
+					</tr>
+				</thead>
+				<tbody>
+					{rows.map((row, i) => {
+						const isMe = currentUser?.username === row.username;
+						const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+						return (
+							<tr class:list={[{ "row-me": isMe }]}>
+								<td class="col-rank rank">
+									{medal ? <span class="medal">{medal}</span> : <span class="rank-num">{i + 1}</span>}
+								</td>
+								<td class="col-user">
+									<span class:list={["username", { "username-me": isMe }]}>{row.username}</span>
+									{isMe && <span class="you-badge">tu</span>}
+								</td>
+								<td class="col-num">{row.total_questions}</td>
+								<td class="col-num">{row.total_correct}</td>
+								<td class="col-num">
+									<span class:list={[
+										"accuracy-badge",
+										row.accuracy >= 80 ? "acc-high" : row.accuracy >= 60 ? "acc-mid" : "acc-low",
+									]}>
+										{row.accuracy}%
+									</span>
+								</td>
+							</tr>
+						);
+					})}
+				</tbody>
+			</table>
+		</div>
+	)}
+</Layout>
+
+<style>
+	.page-header {
+		margin-bottom: 1.5rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+		margin-bottom: 0.25rem;
+	}
+
+	.subtitle {
+		color: #64748b;
+		font-size: 0.9375rem;
+	}
+
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1.75rem;
+	}
+
+	.filter-btn {
+		padding: 0.375rem 0.875rem;
+		border-radius: 999px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		text-decoration: none;
+		background: #1e293b;
+		color: #94a3b8;
+		border: 1px solid #334155;
+		transition: background 0.15s, color 0.15s, border-color 0.15s;
+	}
+
+	.filter-btn:hover {
+		color: #e2e8f0;
+		border-color: #475569;
+	}
+
+	.filter-btn.active {
+		background: #1e3a5f;
+		color: #60a5fa;
+		border-color: #3b82f6;
+	}
+
+	.empty {
+		color: #475569;
+		padding: 3rem 0;
+		text-align: center;
+	}
+
+	.table-wrap {
+		overflow-x: auto;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9375rem;
+	}
+
+	thead th {
+		padding: 0.625rem 1rem;
+		text-align: left;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #475569;
+		border-bottom: 1px solid #1e293b;
+	}
+
+	tbody tr {
+		border-bottom: 1px solid #0f172a;
+		transition: background 0.1s;
+	}
+
+	tbody tr:hover {
+		background: #1e293b;
+	}
+
+	tbody tr.row-me {
+		background: #0f2040;
+	}
+
+	tbody tr.row-me:hover {
+		background: #1e3a5f;
+	}
+
+	td {
+		padding: 0.75rem 1rem;
+		vertical-align: middle;
+	}
+
+	.col-rank {
+		width: 3rem;
+		text-align: center;
+	}
+
+	.col-num {
+		text-align: right;
+		color: #94a3b8;
+	}
+
+	.medal {
+		font-size: 1.25rem;
+	}
+
+	.rank-num {
+		color: #475569;
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+
+	.col-user {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.username {
+		font-weight: 500;
+		color: #e2e8f0;
+	}
+
+	.username-me {
+		color: #60a5fa;
+	}
+
+	.you-badge {
+		font-size: 0.6875rem;
+		font-weight: 700;
+		padding: 0.1rem 0.4rem;
+		border-radius: 999px;
+		background: #1e3a5f;
+		color: #60a5fa;
+		border: 1px solid #3b82f6;
+	}
+
+	.accuracy-badge {
+		display: inline-block;
+		padding: 0.2rem 0.5rem;
+		border-radius: 999px;
+		font-size: 0.8125rem;
+		font-weight: 600;
+	}
+
+	.acc-high {
+		background: #052e16;
+		color: #4ade80;
+	}
+
+	.acc-mid {
+		background: #1c1400;
+		color: #fbbf24;
+	}
+
+	.acc-low {
+		background: #1c0404;
+		color: #f87171;
+	}
+</style>

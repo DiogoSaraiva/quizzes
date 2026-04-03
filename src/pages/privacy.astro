@@ -1,0 +1,158 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Política de Privacidade">
+	<div class="prose">
+		<h1>Política de Privacidade</h1>
+		<p class="updated">Última atualização: abril de 2026</p>
+
+		<h2>1. Responsável pelo tratamento</h2>
+		<p>
+			Esta plataforma é operada a título pessoal/académico. Para questões relacionadas
+			com os teus dados, contacta o administrador da plataforma.
+		</p>
+
+		<h2>2. Dados recolhidos</h2>
+		<p>Ao criares uma conta e utilizares a plataforma, são recolhidos os seguintes dados:</p>
+		<ul>
+			<li><strong>Username e endereço de e-mail</strong> — para criação e autenticação da conta.</li>
+			<li><strong>Password</strong> — armazenada de forma segura com hash PBKDF2 (nunca em texto simples).</li>
+			<li><strong>Resultados de quizzes</strong> — pontuação, total de perguntas e data de conclusão, associados à tua conta.</li>
+			<li><strong>Progresso em quizzes</strong> — pergunta atual e respostas corretas, para permitir continuar de onde ficaste.</li>
+			<li><strong>Sessões</strong> — token de sessão associado à tua conta, armazenado num cookie seguro com validade de 7 dias.</li>
+		</ul>
+		<p>Não são recolhidos dados de navegação, endereços IP, nem informações de dispositivo.</p>
+
+		<h2>3. Finalidade e base legal</h2>
+		<table>
+			<thead>
+				<tr><th>Dado</th><th>Finalidade</th><th>Base legal</th></tr>
+			</thead>
+			<tbody>
+				<tr><td>Username, e-mail, password</td><td>Autenticação e controlo de acesso</td><td>Consentimento (art. 6.º, n.º 1, al. a) do RGPD)</td></tr>
+				<tr><td>Resultados e progresso</td><td>Funcionalidade da plataforma e leaderboard</td><td>Consentimento</td></tr>
+				<tr><td>Sessão</td><td>Manter sessão ativa de forma segura</td><td>Interesse legítimo</td></tr>
+			</tbody>
+		</table>
+
+		<h2>4. Conservação dos dados</h2>
+		<p>
+			Os dados são conservados enquanto a conta estiver ativa. O progresso de quizzes
+			é automaticamente eliminado após a conclusão de cada quiz. Os resultados do
+			leaderboard são mantidos para efeitos de classificação.
+		</p>
+
+		<h2>5. Partilha de dados</h2>
+		<p>
+			Os dados não são partilhados com terceiros. A plataforma utiliza a infraestrutura
+			da <strong>Cloudflare</strong> (Workers e D1), sujeita à sua própria
+			<a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">política de privacidade</a>.
+		</p>
+
+		<h2>6. Os teus direitos</h2>
+		<p>Ao abrigo do RGPD, tens direito a:</p>
+		<ul>
+			<li><strong>Acesso</strong> — saber quais os dados que temos sobre ti.</li>
+			<li><strong>Retificação</strong> — corrigir dados incorretos.</li>
+			<li><strong>Eliminação</strong> — solicitar a eliminação da tua conta e todos os dados associados.</li>
+			<li><strong>Portabilidade</strong> — receber os teus dados num formato estruturado.</li>
+			<li><strong>Oposição</strong> — opor-te ao tratamento baseado em interesse legítimo.</li>
+		</ul>
+		<p>Para exerceres qualquer um destes direitos, contacta o administrador da plataforma.</p>
+
+		<h2>7. Cookies</h2>
+		<p>
+			A plataforma utiliza um único cookie de sessão (<code>sid</code>), estritamente
+			necessário para o funcionamento da autenticação. Não são utilizados cookies de
+			rastreamento, publicidade ou análise.
+		</p>
+	</div>
+</Layout>
+
+<style is:global>
+	.prose {
+		max-width: 720px;
+		line-height: 1.7;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+		margin-bottom: 0.25rem;
+	}
+
+	.updated {
+		color: #475569;
+		font-size: 0.875rem;
+		margin-bottom: 2rem;
+	}
+
+	h2 {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: #e2e8f0;
+		margin-top: 2rem;
+		margin-bottom: 0.75rem;
+	}
+
+	p {
+		color: #94a3b8;
+		margin-bottom: 0.75rem;
+	}
+
+	ul {
+		color: #94a3b8;
+		padding-left: 1.5rem;
+		margin-bottom: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	strong {
+		color: #cbd5e1;
+	}
+
+	code {
+		font-family: monospace;
+		background: #1e293b;
+		padding: 0.1em 0.4em;
+		border-radius: 0.25rem;
+		font-size: 0.875em;
+		color: #60a5fa;
+	}
+
+	a {
+		color: #60a5fa;
+		text-decoration: none;
+	}
+
+	a:hover {
+		text-decoration: underline;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		margin-bottom: 0.75rem;
+		font-size: 0.875rem;
+	}
+
+	th {
+		text-align: left;
+		padding: 0.5rem 0.75rem;
+		background: #1e293b;
+		color: #cbd5e1;
+		font-weight: 600;
+		border-bottom: 1px solid #334155;
+	}
+
+	td {
+		padding: 0.5rem 0.75rem;
+		color: #94a3b8;
+		border-bottom: 1px solid #1e293b;
+		vertical-align: top;
+	}
+</style>

@@ -1,21 +1,17 @@
 # Quizzes
 
-Plataforma de quizzes interativos — Astro 6 + Cloudflare Workers + D1.
-
-Desenhada para ser usada como módulo independente (ex: `outrosite.com/quizzes`), com quizzes gerados por IA a partir de slides e documentos de estudo.
-
----
+App de quizzes de estudo deployada como Cloudflare Worker com D1 (SQLite). Pode ser servida em `outrosite.com/quizzes` ou como Worker independente.
 
 ## Stack
 
 - **Astro 6** com `output: 'server'`
 - **Cloudflare Workers** via `@astrojs/cloudflare` v13
-- **Cloudflare D1** (SQLite) para persistência
-- Sem framework frontend — JS vanilla em `<script>` tags
+- **Cloudflare D1** (SQLite)
+- Vanilla JS, sem framework frontend
 
 ---
 
-## Setup inicial
+## Setup
 
 ### 1. Criar a base de dados D1
 
@@ -23,14 +19,14 @@ Desenhada para ser usada como módulo independente (ex: `outrosite.com/quizzes`)
 npx wrangler d1 create quizzes
 ```
 
-Copia o `database_id` gerado para `wrangler.jsonc`:
+Copia o `database_id` retornado para `wrangler.jsonc`:
 
 ```jsonc
 "d1_databases": [
   {
     "binding": "DB",
     "database_name": "quizzes",
-    "database_id": "SEU_ID_AQUI"
+    "database_id": "O-TEU-ID-AQUI"
   }
 ]
 ```
@@ -38,46 +34,48 @@ Copia o `database_id` gerado para `wrangler.jsonc`:
 ### 2. Aplicar o schema
 
 ```bash
-# Base de dados local (dev)
+# Local (dev)
 npx wrangler d1 execute quizzes --local --file=src/db/schema.sql
 
 # Produção
 npx wrangler d1 execute quizzes --file=src/db/schema.sql
 ```
 
-### 3. Iniciar o servidor de desenvolvimento
+### 3. Gerar tipos TypeScript
+
+```bash
+npm run generate-types
+```
+
+### 4. Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
+### 5. Deploy
+
+```bash
+npm run deploy
+```
+
 ---
 
-## Estrutura da base de dados
+## Partilha da D1 entre Workers
 
-```
-quizzes       — cadeira, tema, slug, título, descrição
-questions     — pergunta, explicação opcional, tipo, ordem
-options       — texto, is_correct (0/1), ordem
-attempts      — score, total, timestamp (anónimo)
-```
-
-**Campos:**
-- `subject` — cadeira/disciplina (ex: `"Anatomia"`)
-- `topic` — tema dentro da cadeira (ex: `"Sistema Nervoso"`). `NULL` = quiz geral da cadeira
-- `explanation` — explicação da resposta correta, opcional por pergunta
+A mesma base de dados pode ser usada por vários Workers — basta colocar o mesmo `database_id` no `wrangler.jsonc` de cada Worker.
 
 ---
 
 ## Importar quizzes
 
-Os quizzes são gerados por Claude ou GPT e importados via script local (sem admin web).
+Não há admin web. Os quizzes são gerados por IA e importados via CLI.
 
-### 1. Gerar o JSON com IA
+### 1. Gerar o JSON
 
-Usa o prompt em [PROMPT.md](./PROMPT.md) e envia juntamente com os slides/matéria.
+Usa o prompt em [PROMPT.md](PROMPT.md) juntamente com os slides ou documento da matéria.
 
-Formato esperado:
+Formato do JSON:
 
 ```json
 {
@@ -85,6 +83,7 @@ Formato esperado:
   "description": "Neurónios, sinapses e sistema nervoso central",
   "subject": "Anatomia",
   "topic": "Sistema Nervoso",
+  "topic_order": 1,
   "slug": "anatomia-sistema-nervoso-1",
   "questions": [
     {
@@ -103,86 +102,180 @@ Formato esperado:
 }
 ```
 
-> Para quiz **geral** de uma cadeira (sem tema): omite `"topic"`.
-> O campo `"explanation"` é **opcional**.
+| Campo | Obrigatório | Descrição |
+|---|---|---|
+| `slug` | sim | Identificador único (minúsculas, hífens) |
+| `title` | sim | Título do quiz |
+| `subject` | não | Cadeira/disciplina |
+| `topic` | não | Tema/capítulo |
+| `topic_order` | não | Ordem do tema dentro da cadeira (default: `0`) |
+| `description` | não | Descrição curta |
+| `questions[].explanation` | não | Explicação da resposta correta |
 
 ### 2. Importar
 
 ```bash
-# Testar localmente primeiro
+# Testar localmente
 npm run import-quiz -- quiz.json --local
 
-# Publicar em produção
+# Produção
 npm run import-quiz -- quiz.json
 ```
 
-### 3. Apagar um quiz
+O script apaga automaticamente o quiz com o mesmo `slug` antes de importar (idempotente).
+
+### 3. Apagar
 
 ```bash
+# Local
+npm run delete-quiz -- anatomia-sistema-nervoso-1 --local
+
+# Produção
 npm run delete-quiz -- anatomia-sistema-nervoso-1
-```
-
----
-
-## Deploy
-
-```bash
-npm run deploy
-```
-
-Executa `astro build` seguido de `wrangler deploy`.
-
-### Partilha da base de dados entre sites
-
-A mesma D1 pode ser usada por múltiplos Workers — basta usar o mesmo `database_id` no `wrangler.jsonc` de cada site.
-
----
-
-## Migrações
-
-Se a base de dados já existe e precisas de adicionar colunas:
-
-```bash
-# Adicionar coluna topic (se ainda não existir)
-npx wrangler d1 execute quizzes --file=src/db/migrate-add-topic.sql
-
-# Adicionar coluna explanation
-npx wrangler d1 execute quizzes --file=src/db/migrate-add-explanation.sql
 ```
 
 ---
 
 ## Navegação
 
-A página inicial agrupa automaticamente os quizzes por cadeira e tema:
+A página inicial agrupa por cadeira e ordena os temas por `topic_order`:
 
 ```
 ▶ Anatomia
-    [Geral]  Anatomia — Quiz Geral
-    Sistema Nervoso
-      Anatomia — Sistema Nervoso
-    Sistema Cardiovascular
-      Anatomia — Sistema Cardiovascular
+    Quiz Geral  ← todas as perguntas de todos os temas, por ordem
+    1. Sistema Nervoso
+    2. Sistema Cardiovascular
 
 ▶ Fisiologia
     ...
 ```
 
----
-
-## Favicon
-
-Para usar o favicon do site pai: substitui `public/favicon.svg` e `public/favicon.ico` pelos ficheiros do site pai.
+O **Quiz Geral** (`/exam/[subject]`) agrega todas as perguntas da cadeira ordenadas por `topic_order → topic → order`.
 
 ---
 
-## Scripts disponíveis
+## Schema
+
+```
+quizzes    (id, slug, title, description, subject, topic, topic_order, created_at)
+questions  (id, quiz_id, text, explanation, type, order)
+options    (id, question_id, text, is_correct, order)
+attempts   (id, quiz_id, score, total, completed_at)
+```
+
+Schema completo em [`src/db/schema.sql`](src/db/schema.sql).
+
+---
+
+## Integração noutro site Astro
+
+### Git submodulo
+
+Na raiz do site pai:
+
+```bash
+git submodule add <url-do-repo-quizzes> quizzes
+git submodule update --init
+```
+
+Estrutura resultante:
+
+```
+outrosite/
+├── src/
+├── public/
+│   └── favicon.svg   ← favicon do pai
+├── quizzes/          ← submodulo
+│   ├── src/
+│   ├── public/
+│   └── wrangler.jsonc
+└── package.json
+```
+
+### Base path
+
+Em `astro.config.mjs`, adiciona `base`:
+
+```js
+export default defineConfig({
+  base: '/quizzes',
+  output: 'server',
+  adapter: cloudflare({ imageService: "cloudflare" })
+});
+```
+
+### Rota no Cloudflare
+
+Em `wrangler.jsonc`, adiciona:
+
+```jsonc
+"routes": [
+  { "pattern": "outrosite.com/quizzes*", "zone_name": "outrosite.com" }
+]
+```
+
+O Worker responde apenas a `/quizzes/*` no domínio do pai, sem subdomínio separado.
+
+### Favicon do pai
+
+Com o submodulo, o `public/` do pai está em `../../public/` relativo ao submodulo. Adiciona um script de prebuild em `package.json`:
+
+```json
+"scripts": {
+  "prebuild": "node scripts/copy-favicon.js",
+  ...
+}
+```
+
+`scripts/copy-favicon.js`:
+
+```js
+import { existsSync, copyFileSync, readdirSync } from "fs";
+import { join } from "path";
+
+const parentPublic = join(import.meta.dirname, "../../public");
+
+if (!existsSync(parentPublic)) {
+  console.log("Favicon do pai não encontrado, a usar o local.");
+  process.exit(0);
+}
+
+const favicons = readdirSync(parentPublic).filter(f => f.startsWith("favicon"));
+for (const f of favicons) {
+  copyFileSync(join(parentPublic, f), join(import.meta.dirname, "../public", f));
+  console.log(`Copiado: ${f}`);
+}
+```
+
+Se o pai existir (ex: CI com submodulo), copia o favicon. Se não (deploy standalone), usa o ficheiro local sem erros.
+
+### Deploy
+
+No CI, garante que os submodulos são inicializados antes do deploy:
+
+```bash
+git submodule update --init --recursive
+cd quizzes && npm install && npm run deploy
+```
+
+Ou no `package.json` do pai:
+
+```json
+"scripts": {
+  "deploy:quizzes": "cd quizzes && npm install && npm run deploy"
+}
+```
+
+---
+
+## Scripts
 
 | Comando | Descrição |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm run preview` | Build + preview local com wrangler |
+| `npm run preview` | Build + preview local com Wrangler |
 | `npm run deploy` | Build + deploy para Cloudflare |
-| `npm run import-quiz -- <file> [--local]` | Importar quiz JSON |
-| `npm run delete-quiz -- <slug> [--local]` | Apagar quiz por slug |
+| `npm run generate-types` | Gera tipos TypeScript a partir dos bindings |
+| `npm run import-quiz -- <file> [--local]` | Importa quiz JSON para a D1 |
+| `npm run delete-quiz -- <slug> [--local]` | Apaga quiz por slug da D1 |

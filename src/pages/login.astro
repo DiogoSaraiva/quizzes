@@ -1,0 +1,118 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+if (Astro.locals.user) return Astro.redirect("/");
+
+const error = Astro.url.searchParams.get("error");
+const next = Astro.url.searchParams.get("next") ?? "/";
+
+const errors: Record<string, string> = {
+	invalid: "Username ou password incorretos.",
+	pending: "A tua conta ainda não foi aprovada.",
+};
+---
+
+<Layout title="Entrar">
+	<div class="auth-wrap">
+		<h1>Entrar</h1>
+
+		{error && <p class="alert alert-error">{errors[error] ?? "Erro inesperado."}</p>}
+
+		<form method="POST" action="/api/auth/login">
+			<input type="hidden" name="next" value={next} />
+			<label>
+				Username
+				<input type="text" name="username" required autocomplete="username" />
+			</label>
+			<label>
+				Password
+				<input type="password" name="password" required autocomplete="current-password" />
+			</label>
+			<button type="submit" class="btn-primary">Entrar</button>
+		</form>
+
+		<p class="footer-link">Ainda não tens conta? <a href="/register">Pedir acesso</a></p>
+	</div>
+</Layout>
+
+<style>
+	.auth-wrap {
+		max-width: 400px;
+		margin: 3rem auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+	}
+
+	.alert {
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		font-size: 0.9375rem;
+		background: #1c0404;
+		border: 1px solid #ef4444;
+		color: #fca5a5;
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		font-size: 0.875rem;
+		color: #94a3b8;
+	}
+
+	input {
+		padding: 0.625rem 0.875rem;
+		background: #1e293b;
+		border: 1.5px solid #334155;
+		border-radius: 0.5rem;
+		color: #e2e8f0;
+		font-size: 1rem;
+		outline: none;
+		transition: border-color 0.15s;
+	}
+
+	input:focus {
+		border-color: #3b82f6;
+	}
+
+	.btn-primary {
+		margin-top: 0.25rem;
+		padding: 0.75rem;
+		background: #3b82f6;
+		color: white;
+		border: none;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.btn-primary:hover {
+		background: #2563eb;
+	}
+
+	.footer-link {
+		text-align: center;
+		font-size: 0.875rem;
+		color: #64748b;
+	}
+
+	.footer-link a {
+		color: #60a5fa;
+		text-decoration: none;
+	}
+</style>

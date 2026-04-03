@@ -42,6 +42,13 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 		<!-- Start screen -->
 		<div id="screen-start">
 			<p class="meta">{questions.length} perguntas</p>
+			<div id="saved-notice" class="hidden saved-notice">
+				<p id="saved-text" class="saved-text"></p>
+				<div class="start-btns">
+					<button id="btn-continue" class="btn-primary">Continuar</button>
+					<button id="btn-restart" class="btn-secondary">Recomeçar</button>
+				</div>
+			</div>
 			<button id="btn-start" class="btn-primary">Começar Quiz</button>
 		</div>
 
@@ -107,6 +114,48 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 	const show = (el: HTMLElement) => el.classList.remove("hidden");
 	const hide = (el: HTMLElement) => el.classList.add("hidden");
 
+	async function saveProgress() {
+		await fetch("/api/progress", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ quiz_id: quiz.id, current, correct }),
+		}).catch(() => {});
+	}
+
+	async function clearProgress() {
+		await fetch("/api/progress", {
+			method: "DELETE",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ quiz_id: quiz.id }),
+		}).catch(() => {});
+	}
+
+	// Verificar progresso guardado
+	const res = await fetch(`/api/progress?quiz_id=${quiz.id}`).catch(() => null);
+	const saved: { current: number; correct: number } | null = res?.ok ? await res.json() : null;
+
+	if (saved && saved.current > 0) {
+		$("saved-text").textContent =
+			`Progresso guardado — pergunta ${saved.current + 1} de ${questions.length}`;
+		show($("saved-notice"));
+		hide($("btn-start"));
+
+		$("btn-continue").addEventListener("click", () => {
+			current = saved.current;
+			correct = saved.correct;
+			hide($("screen-start"));
+			show($("screen-player"));
+			renderQuestion();
+		});
+
+		$("btn-restart").addEventListener("click", async () => {
+			await clearProgress();
+			hide($("screen-start"));
+			show($("screen-player"));
+			renderQuestion();
+		});
+	}
+
 	function renderQuestion() {
 		answered = false;
 		const q = questions[current];
@@ -123,10 +172,21 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 		const pct = (current / questions.length) * 100;
 		($("progress-fill") as HTMLElement).style.width = `${pct}%`;
 
+		const letters = ["A", "B", "C", "D", "E", "F"];
 		q.options.forEach((opt, i) => {
 			const btn = document.createElement("button");
 			btn.className = "option-btn";
-			btn.textContent = opt.text;
+
+			const letter = document.createElement("span");
+			letter.className = "option-letter";
+			letter.textContent = letters[i];
+
+			const text = document.createElement("span");
+			text.className = "option-text";
+			text.textContent = opt.text;
+
+			btn.appendChild(letter);
+			btn.appendChild(text);
 			btn.addEventListener("click", () => selectOption(i));
 			$("q-options").appendChild(btn);
 		});
@@ -191,11 +251,13 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 		renderQuestion();
 	});
 
-	$("btn-next").addEventListener("click", () => {
+	$("btn-next").addEventListener("click", async () => {
 		if (current < questions.length - 1) {
 			current++;
+			await saveProgress();
 			renderQuestion();
 		} else {
+			await clearProgress();
 			showResults();
 		}
 	});
@@ -208,9 +270,27 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 		show($("screen-player"));
 		renderQuestion();
 	});
+
+	document.addEventListener("keydown", (e) => {
+		if ($("screen-player").classList.contains("hidden")) return;
+
+		const letters = ["a", "b", "c", "d", "e", "f"];
+		const idx = letters.indexOf(e.key.toLowerCase());
+
+		if (idx !== -1 && !answered) {
+			const btns = $("q-options").querySelectorAll(".option-btn");
+			if (idx < btns.length) selectOption(idx);
+			return;
+		}
+
+		if ((e.key === "Enter" || e.key === " ") && answered) {
+			e.preventDefault();
+			($("btn-next") as HTMLButtonElement).click();
+		}
+	});
 </script>
 
-<style>
+<style is:global>
 	.quiz-header {
 		margin-bottom: 2rem;
 	}
@@ -249,6 +329,23 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 		font-size: 1.125rem;
 	}
 
+	.saved-notice {
+		margin-bottom: 1rem;
+	}
+
+	.saved-text {
+		font-size: 0.9375rem;
+		color: #60a5fa;
+		margin-bottom: 1rem;
+	}
+
+	.start-btns {
+		display: flex;
+		gap: 0.75rem;
+		justify-content: center;
+		flex-wrap: wrap;
+	}
+
 	/* Progress */
 	.progress-bar {
 		height: 4px;
@@ -281,44 +378,97 @@ const quizJson = JSON.stringify({ ...quiz, questions });
 	.options-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.625rem;
 		margin-bottom: 1.5rem;
 	}
 
 	.option-btn {
 		width: 100%;
-		text-align: left;
-		padding: 1rem 1.25rem;
-		background: #1e293b;
-		border: 1px solid #334155;
-		border-radius: 0.5rem;
-		color: #e2e8f0;
+		display: flex;
+		align-items: center;
+		gap: 0.875rem;
+		padding: 0.875rem 1rem;
+		background: #0f172a;
+		border: 1.5px solid #1e293b;
+		border-radius: 0.75rem;
+		color: #94a3b8;
 		font-size: 1rem;
 		cursor: pointer;
 		transition:
 			border-color 0.15s,
-			background 0.15s;
+			background 0.15s,
+			color 0.15s,
+			transform 0.1s,
+			opacity 0.2s;
+		text-align: left;
+	}
+
+	.option-letter {
+		flex-shrink: 0;
+		width: 2rem;
+		height: 2rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.4rem;
+		background: #1e293b;
+		border: 1px solid #334155;
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: #475569;
+		transition:
+			background 0.15s,
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	.option-text {
+		flex: 1;
+		line-height: 1.45;
 	}
 
 	.option-btn:hover:not(:disabled) {
-		border-color: #60a5fa;
+		border-color: #3b82f6;
+		color: #e2e8f0;
+		transform: translateX(3px);
+	}
+
+	.option-btn:hover:not(:disabled) .option-letter {
 		background: #1e3a5f;
+		border-color: #3b82f6;
+		color: #60a5fa;
 	}
 
 	.option-btn.correct {
 		border-color: #22c55e;
-		background: #14532d;
+		background: #052e16;
 		color: #bbf7d0;
+	}
+
+	.option-btn.correct .option-letter {
+		background: #166534;
+		border-color: #22c55e;
+		color: #4ade80;
 	}
 
 	.option-btn.wrong {
 		border-color: #ef4444;
-		background: #7f1d1d;
+		background: #1c0404;
 		color: #fecaca;
+	}
+
+	.option-btn.wrong .option-letter {
+		background: #7f1d1d;
+		border-color: #ef4444;
+		color: #f87171;
 	}
 
 	.option-btn:disabled {
 		cursor: default;
+	}
+
+	.option-btn:disabled:not(.correct):not(.wrong) {
+		opacity: 0.4;
 	}
 
 	.explanation {
