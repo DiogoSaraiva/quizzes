@@ -21,8 +21,8 @@ const { quiz } = Astro.props;
 	.card {
 		display: block;
 		padding: 1.5rem;
-		background: #1e293b;
-		border: 1px solid #334155;
+		background: var(--q-surface);
+		border: 1px solid var(--q-border);
 		border-radius: 0.75rem;
 		text-decoration: none;
 		color: inherit;
@@ -32,8 +32,8 @@ const { quiz } = Astro.props;
 	}
 
 	.card:hover {
-		border-color: #60a5fa;
-		background: #1e3a5f;
+		border-color: var(--q-accent-light);
+		background: var(--q-surface-hover);
 	}
 
 	.subject {
@@ -42,7 +42,7 @@ const { quiz } = Astro.props;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #60a5fa;
+		color: var(--q-accent-light);
 		margin-bottom: 0.5rem;
 	}
 
@@ -54,7 +54,7 @@ const { quiz } = Astro.props;
 
 	p {
 		font-size: 0.875rem;
-		color: #94a3b8;
+		color: var(--q-text-muted);
 		line-height: 1.5;
 		margin-top: 0.25rem;
 	}

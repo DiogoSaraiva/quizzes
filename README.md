@@ -122,7 +122,7 @@ Para o quizzes herdar o visual do pai:
 1. Cria `public/theme.css` no repo pai.
 2. Garante `public/favicon.svg` no repo pai.
 
-O submodulo copia automaticamente `theme.css` e ficheiros `favicon*` do pai antes do build.
+O submodulo copia automaticamente `theme.css` e ficheiros `favicon*` do pai antes de `dev` e `build`.
 
 Nota: atualmente o quizzes usa `favicon.svg` (não depende de `favicon.ico`).
 
@@ -151,7 +151,7 @@ Cria `public/theme.css` no repo pai para sobrescrever as cores do submodulo:
 }
 ```
 
-O favicon e o `theme.css` são copiados automaticamente antes de cada build.
+O favicon e o `theme.css` são copiados automaticamente antes de cada `dev` e `build`.
 
 ### 9. Um D1 para vários repos pai
 
