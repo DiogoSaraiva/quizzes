@@ -8,18 +8,12 @@
  */
 
 import { execSync } from "child_process";
-import { writeFileSync, unlinkSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
 
 const isLocal = process.argv.includes("--local");
 
 const sql = `SELECT id, username, email, created_at FROM users WHERE approved = 0 ORDER BY created_at ASC;`;
-const tmpFile = join(tmpdir(), `list-pending-${Date.now()}.sql`);
-writeFileSync(tmpFile, sql);
-
 const locationFlag = isLocal ? " --local" : " --remote";
-const cmd = `npx wrangler d1 execute quizzes --file="${tmpFile}"${locationFlag} --json`;
+const cmd = `npx wrangler d1 execute quizzes --command="${sql}"${locationFlag} --json`;
 
 try {
 	const output = execSync(cmd, { encoding: "utf-8" });
@@ -35,9 +29,16 @@ try {
 		}
 		console.log(`\nPara aprovar: node scripts/approve-user.js <username>${isLocal ? " --local" : ""}\n`);
 	}
-} catch {
+} catch (err) {
 	console.error("✗ Erro ao listar utilizadores.");
+	if (err?.stderr) {
+		console.error(String(err.stderr));
+	}
+	if (err?.stdout) {
+		console.error(String(err.stdout));
+	}
+	if (err?.message) {
+		console.error(err.message);
+	}
 	process.exit(1);
-} finally {
-	unlinkSync(tmpFile);
 }

@@ -1,14 +1,25 @@
 ---
+import { BRAND, BRAND_MARK } from "../generated/brand";
+
 interface Props {
 	title?: string;
-	description?: string;
+	brand?: string;
+	brandMark?: string;
 }
 
-const { title = "Quizzes", description = "Plataforma de quizzes interativos" } =
-	Astro.props;
+const defaultBrand = BRAND;
+const defaultBrandMark = BRAND_MARK;
+
+const {
+	title = "Quizzes",
+	brand = defaultBrand,
+	brandMark = defaultBrandMark,
+} = Astro.props;
+
+const showSuffix = brand !== "Quizzes";
+const brandLabel = showSuffix ? `${brand}${brandMark} Quizzes` : "Quizzes";
 
 const user = Astro.locals.user;
-// Favicon: substitui public/favicon.svg e public/favicon.ico pelo logo do site pai.
 ---
 
 <!doctype html>
@@ -20,20 +31,15 @@ const user = Astro.locals.user;
 		<!-- theme.css opcional: copiado do pai por copy-assets.js, sobrescreve as variáveis abaixo -->
 		<link rel="stylesheet" href="/theme.css" />
 		<meta name="generator" content={Astro.generator} />
-		<meta name="description" content={description} />
-		<title>{title} | Quizzes</title>
+		<title>{title} | {brandLabel}</title>
 	</head>
 	<body>
 		<header>
 			<nav>
 				<a href="/" class="brand">
-					<img
-						src="/logo.svg"
-						alt="Logo"
-						class="brand-logo"
-						onerror="if (this.src.endsWith('/logo.svg')) { this.src='/favicon.svg'; } else { this.style.display='none'; }"
-					/>
-					<span>Quizzes</span>
+					{brand}
+					{brandMark && <span>{brandMark}</span>}
+					{showSuffix && <span class="brand-suffix"> Quizzes</span>}
 				</a>
 				<div class="nav-right">
 					<a href="/leaderboard" class="nav-link">Leaderboard</a>
@@ -61,7 +67,7 @@ const user = Astro.locals.user;
 	/* ── Variáveis de tema ─────────────────────────────────────────────────────
 	   O ficheiro public/theme.css (copiado do pai) pode sobrescrever estas vars.
 	   ───────────────────────────────────────────────────────────────────────── */
-	:root {
+	html {
 		--q-bg:             #0f172a;
 		--q-surface:        #1e293b;
 		--q-surface-hover:  #1e3a5f;
@@ -115,7 +121,6 @@ const user = Astro.locals.user;
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.6rem;
 		font-size: 1.25rem;
 		font-weight: 700;
 		color: var(--q-accent-light);
@@ -123,11 +128,12 @@ const user = Astro.locals.user;
 		letter-spacing: -0.025em;
 	}
 
-	.brand-logo {
-		width: 1.5rem;
-		height: 1.5rem;
-		object-fit: contain;
-		flex: 0 0 auto;
+	.brand span {
+		color: var(--q-accent);
+	}
+
+	.brand .brand-suffix {
+		color: var(--q-accent-light);
 	}
 
 	.nav-right {
