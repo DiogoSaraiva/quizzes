@@ -66,17 +66,17 @@ npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc do pa
 npx wrangler d1 execute quizzes --remote --file=quizzes/src/db/schema.sql
 ```
 
-### 4. Secrets
+### 4. Primeiro deploy
+
+```bash
+npm run deploy:quizzes   # a partir do repo pai
+```
+
+### 5. Secrets
 
 ```bash
 cd quizzes
 npx wrangler secret put ADMIN_SECRET
-```
-
-### 5. Deploy
-
-```bash
-npm run deploy:quizzes   # a partir do repo pai
 ```
 
 ### 6. CI automático (Cloudflare Pages do pai)
