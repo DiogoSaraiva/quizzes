@@ -6,6 +6,11 @@ const PUBLIC = ["/login", "/register", "/privacy", "/api/auth/login", "/api/auth
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
 	try {
+		// Assets estáticos não devem passar por auth middleware.
+		if (ctx.url.pathname.startsWith("/_astro/") || /\.[a-z0-9]+$/i.test(ctx.url.pathname)) {
+			return next();
+		}
+
 		// Rotas públicas — sem verificação
 		if (PUBLIC.some((p) => ctx.url.pathname.startsWith(p))) {
 			return next();

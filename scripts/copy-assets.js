@@ -5,7 +5,7 @@
  * Silencioso se o pai não existir (uso standalone).
  */
 
-import { existsSync, copyFileSync, readdirSync } from "fs";
+import { existsSync, copyFileSync, readdirSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -29,6 +29,13 @@ for (const f of readdirSync(parentPublic).filter(f => f.startsWith("favicon"))) 
 if (existsSync(join(parentPublic, "theme.css"))) {
 	copyFileSync(join(parentPublic, "theme.css"), join(publicDir, "theme.css"));
 	copied++;
+}
+
+// Evita favicon antigo local quando o pai só fornece favicon.svg.
+const parentIco = join(parentPublic, "favicon.ico");
+const localIco = join(publicDir, "favicon.ico");
+if (!existsSync(parentIco) && existsSync(localIco)) {
+	rmSync(localIco);
 }
 
 if (copied > 0) {
