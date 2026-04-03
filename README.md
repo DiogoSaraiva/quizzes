@@ -1,6 +1,8 @@
 # Quizzes
 
-App de quizzes de estudo deployada como Cloudflare Worker com D1 (SQLite). Pode ser servida em `outrosite.com/quizzes` ou como Worker independente.
+App de quizzes de estudo deployada como Cloudflare Worker com D1 (SQLite).
+
+Desenhada para ser usada como submodulo de um site Astro pai — a configuração da base de dados fica toda no pai.
 
 ## Stack
 
@@ -11,69 +13,131 @@ App de quizzes de estudo deployada como Cloudflare Worker com D1 (SQLite). Pode 
 
 ---
 
-## Setup
+## Uso como submodulo (recomendado)
 
-### 1. Criar a base de dados D1
+### 1. Adicionar ao repo pai
 
 ```bash
-npx wrangler d1 create quizzes
+git submodule add <url-deste-repo> quizzes
+git submodule update --init
 ```
 
-Copia o `database_id` retornado para `wrangler.jsonc`:
+### 2. Configurar o repo pai
+
+No `wrangler.jsonc` do pai, adiciona o binding D1:
 
 ```jsonc
 "d1_databases": [
   {
     "binding": "DB",
     "database_name": "quizzes",
-    "database_id": "O-TEU-ID-AQUI"
+    "database_id": "O-TEU-DATABASE-ID"
   }
 ]
 ```
 
-### 2. Aplicar o schema
+Adiciona o script `scripts/setup-quizzes.js` ao repo pai:
+
+```js
+import { readFileSync, writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const root = dirname(fileURLToPath(import.meta.url)) + "/..";
+
+const parentRaw = readFileSync(join(root, "wrangler.jsonc"), "utf-8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^\s*\/\/.*/gm, "");
+const parent = JSON.parse(parentRaw);
+
+const db = parent.d1_databases?.find(d => d.database_name === "quizzes");
+if (!db) {
+  console.error('Binding D1 "quizzes" não encontrado em wrangler.jsonc');
+  process.exit(1);
+}
+
+writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
+  name: "quizzes",
+  compatibility_date: parent.compatibility_date,
+  compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
+  assets: { binding: "ASSETS", directory: "./dist" },
+  observability: { enabled: true },
+  d1_databases: [db],
+}, null, "\t"));
+
+console.log("✓ quizzes/wrangler.jsonc gerado.");
+```
+
+No `package.json` do pai:
+
+```json
+"scripts": {
+  "deploy:quizzes": "node scripts/setup-quizzes.js && cd quizzes && npm ci && npm run deploy"
+}
+```
+
+### 3. Aplicar o schema
 
 ```bash
-# Local (dev)
-npx wrangler d1 execute quizzes --local --file=src/db/schema.sql
+# Local
+npx wrangler d1 execute quizzes --local --file=quizzes/src/db/schema.sql
 
 # Produção
-npx wrangler d1 execute quizzes --file=src/db/schema.sql
+npx wrangler d1 execute quizzes --remote --file=quizzes/src/db/schema.sql
 ```
 
-### 3. Gerar tipos TypeScript
+### 4. Rota no Cloudflare
 
-```bash
-npm run generate-types
+No `wrangler.jsonc` do pai, adiciona a rota para o Worker de quizzes:
+
+```jsonc
+"routes": [
+  { "pattern": "outrosite.com/quizzes*", "zone_name": "outrosite.com" }
+]
 ```
 
-### 4. Desenvolvimento
+### 5. Favicon
+
+O submodulo copia automaticamente o favicon do pai antes de cada build.
+O `public/` do pai deve estar em `../public/` relativamente à pasta `quizzes/`.
+
+### 6. Deploy
 
 ```bash
+npm run deploy:quizzes
+```
+
+O script gera o `wrangler.jsonc` do submodulo a partir da config do pai e faz deploy.
+
+---
+
+## Uso standalone
+
+```bash
+cp wrangler.example.jsonc wrangler.jsonc
+npx wrangler d1 create quizzes   # copia o database_id para wrangler.jsonc
+npx wrangler d1 execute quizzes --local --file=src/db/schema.sql
 npm run dev
-```
-
-### 5. Deploy
-
-```bash
-npm run deploy
 ```
 
 ---
 
-## Partilha da D1 entre Workers
+## Gestão de utilizadores
 
-A mesma base de dados pode ser usada por vários Workers — basta colocar o mesmo `database_id` no `wrangler.jsonc` de cada Worker.
+Os registos são aprovados manualmente:
+
+```bash
+npm run pending-users          # lista pendentes
+npm run approve-user -- <username>   # aprova
+```
+
+Para produção, adiciona `--remote` (ou omite `--local`).
 
 ---
 
 ## Importar quizzes
 
-Não há admin web. Os quizzes são gerados por IA e importados via CLI.
-
-### 1. Gerar o JSON
-
-Usa o prompt em [PROMPT.md](PROMPT.md) juntamente com os slides ou documento da matéria.
+Os quizzes são gerados por IA a partir de slides/documentos. Usa o prompt em [PROMPT.md](PROMPT.md).
 
 Formato do JSON:
 
@@ -102,168 +166,24 @@ Formato do JSON:
 }
 ```
 
-| Campo | Obrigatório | Descrição |
-|---|---|---|
-| `slug` | sim | Identificador único (minúsculas, hífens) |
-| `title` | sim | Título do quiz |
-| `subject` | não | Cadeira/disciplina |
-| `topic` | não | Tema/capítulo |
-| `topic_order` | não | Ordem do tema dentro da cadeira (default: `0`) |
-| `description` | não | Descrição curta |
-| `questions[].explanation` | não | Explicação da resposta correta |
-
-### 2. Importar
-
 ```bash
-# Testar localmente
-npm run import-quiz -- quiz.json --local
-
-# Produção
-npm run import-quiz -- quiz.json
+npm run import-quiz -- quiz.json          # produção
+npm run import-quiz -- quiz.json --local  # local
+npm run delete-quiz -- <slug>             # apagar
 ```
-
-O script apaga automaticamente o quiz com o mesmo `slug` antes de importar (idempotente).
-
-### 3. Apagar
-
-```bash
-# Local
-npm run delete-quiz -- anatomia-sistema-nervoso-1 --local
-
-# Produção
-npm run delete-quiz -- anatomia-sistema-nervoso-1
-```
-
----
-
-## Navegação
-
-A página inicial agrupa por cadeira e ordena os temas por `topic_order`:
-
-```
-▶ Anatomia
-    Quiz Geral  ← todas as perguntas de todos os temas, por ordem
-    1. Sistema Nervoso
-    2. Sistema Cardiovascular
-
-▶ Fisiologia
-    ...
-```
-
-O **Quiz Geral** (`/exam/[subject]`) agrega todas as perguntas da cadeira ordenadas por `topic_order → topic → order`.
 
 ---
 
 ## Schema
 
 ```
-quizzes    (id, slug, title, description, subject, topic, topic_order, created_at)
-questions  (id, quiz_id, text, explanation, type, order)
-options    (id, question_id, text, is_correct, order)
-attempts   (id, quiz_id, score, total, completed_at)
-```
-
-Schema completo em [`src/db/schema.sql`](src/db/schema.sql).
-
----
-
-## Integração noutro site Astro
-
-### Git submodulo
-
-Na raiz do site pai:
-
-```bash
-git submodule add <url-do-repo-quizzes> quizzes
-git submodule update --init
-```
-
-Estrutura resultante:
-
-```
-outrosite/
-├── src/
-├── public/
-│   └── favicon.svg   ← favicon do pai
-├── quizzes/          ← submodulo
-│   ├── src/
-│   ├── public/
-│   └── wrangler.jsonc
-└── package.json
-```
-
-### Base path
-
-Em `astro.config.mjs`, adiciona `base`:
-
-```js
-export default defineConfig({
-  base: '/quizzes',
-  output: 'server',
-  adapter: cloudflare({ imageService: "cloudflare" })
-});
-```
-
-### Rota no Cloudflare
-
-Em `wrangler.jsonc`, adiciona:
-
-```jsonc
-"routes": [
-  { "pattern": "outrosite.com/quizzes*", "zone_name": "outrosite.com" }
-]
-```
-
-O Worker responde apenas a `/quizzes/*` no domínio do pai, sem subdomínio separado.
-
-### Favicon do pai
-
-Com o submodulo, o `public/` do pai está em `../../public/` relativo ao submodulo. Adiciona um script de prebuild em `package.json`:
-
-```json
-"scripts": {
-  "prebuild": "node scripts/copy-favicon.js",
-  ...
-}
-```
-
-`scripts/copy-favicon.js`:
-
-```js
-import { existsSync, copyFileSync, readdirSync } from "fs";
-import { join } from "path";
-
-const parentPublic = join(import.meta.dirname, "../../public");
-
-if (!existsSync(parentPublic)) {
-  console.log("Favicon do pai não encontrado, a usar o local.");
-  process.exit(0);
-}
-
-const favicons = readdirSync(parentPublic).filter(f => f.startsWith("favicon"));
-for (const f of favicons) {
-  copyFileSync(join(parentPublic, f), join(import.meta.dirname, "../public", f));
-  console.log(`Copiado: ${f}`);
-}
-```
-
-Se o pai existir (ex: CI com submodulo), copia o favicon. Se não (deploy standalone), usa o ficheiro local sem erros.
-
-### Deploy
-
-No CI, garante que os submodulos são inicializados antes do deploy:
-
-```bash
-git submodule update --init --recursive
-cd quizzes && npm install && npm run deploy
-```
-
-Ou no `package.json` do pai:
-
-```json
-"scripts": {
-  "deploy:quizzes": "cd quizzes && npm install && npm run deploy"
-}
+users          (id, username, email, password_hash, password_salt, approved, created_at)
+sessions       (id, user_id, expires_at)
+quizzes        (id, slug, title, description, subject, topic, topic_order, created_at)
+questions      (id, quiz_id, text, explanation, type, order)
+options        (id, question_id, text, is_correct, order)
+attempts       (id, quiz_id, user_id, score, total, completed_at)
+quiz_progress  (user_id, type, ref, current, correct, updated_at)
 ```
 
 ---
@@ -273,9 +193,9 @@ Ou no `package.json` do pai:
 | Comando | Descrição |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm run preview` | Build + preview local com Wrangler |
 | `npm run deploy` | Build + deploy para Cloudflare |
-| `npm run generate-types` | Gera tipos TypeScript a partir dos bindings |
-| `npm run import-quiz -- <file> [--local]` | Importa quiz JSON para a D1 |
-| `npm run delete-quiz -- <slug> [--local]` | Apaga quiz por slug da D1 |
+| `npm run generate-types` | Gera tipos TypeScript |
+| `npm run import-quiz -- <file> [--local]` | Importa quiz JSON |
+| `npm run delete-quiz -- <slug> [--local]` | Apaga quiz por slug |
+| `npm run pending-users [--local]` | Lista utilizadores pendentes |
+| `npm run approve-user -- <username> [--local]` | Aprova utilizador |
