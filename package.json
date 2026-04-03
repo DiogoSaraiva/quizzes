@@ -12,7 +12,7 @@
 		"preview": "astro build && wrangler dev",
 		"astro": "astro",
 		"generate-types": "wrangler types",
-		"deploy": "astro build && wrangler deploy",
+		"deploy": "npm run build && wrangler deploy",
 		"cf-typegen": "wrangler types",
 		"import-quiz": "node scripts/import-quiz.js",
 		"delete-quiz": "node scripts/delete-quiz.js",
