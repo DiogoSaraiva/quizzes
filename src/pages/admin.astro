@@ -150,7 +150,7 @@ const active = users.filter((u) => u.approved);
 	document.querySelectorAll<HTMLButtonElement>(".btn-save-role").forEach((btn) => {
 		btn.addEventListener("click", async () => {
 			const id = Number(btn.dataset.id);
-			const select = document.querySelector<HTMLSelectElement>(`.role-select[data-id="${id}"]`);
+			const select = document.querySelector(`.role-select[data-id="${id}"]`) as HTMLSelectElement | null;
 			if (!select) return;
 			const newRole = select.value;
 			btn.disabled = true;
