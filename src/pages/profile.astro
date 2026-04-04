@@ -1,0 +1,182 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+if (!Astro.locals.user) return Astro.redirect("/login?next=/profile");
+
+const user = Astro.locals.user;
+const error = Astro.url.searchParams.get("error");
+const success = Astro.url.searchParams.get("success");
+
+const errors: Record<string, string> = {
+	invalid: "Preenche todos os campos.",
+	short: "A nova password deve ter pelo menos 8 caracteres.",
+	mismatch: "As passwords não coincidem.",
+	wrong: "Password atual incorreta.",
+};
+---
+
+<Layout title="Perfil">
+	<div class="profile-wrap">
+		<h1>Perfil</h1>
+
+		<div class="user-info">
+			<span class="username">{user.username}</span>
+			<span class="role">{user.role}</span>
+		</div>
+
+		<section>
+			<h2>Alterar password</h2>
+
+			{error && <p class="alert alert-error">{errors[error] ?? "Erro inesperado."}</p>}
+			{success && <p class="alert alert-success">Password alterada com sucesso.</p>}
+
+			<form method="POST" action="/api/auth/change-password">
+				<label>
+					Password atual
+					<input type="password" name="current_password" required autocomplete="current-password" />
+				</label>
+				<label>
+					Nova password
+					<input type="password" name="new_password" id="new-password" required autocomplete="new-password" minlength="8" />
+					<small class="field-hint" id="new-hint">Mínimo 8 caracteres</small>
+				</label>
+				<label>
+					Confirmar nova password
+					<input type="password" name="confirm_password" id="confirm-password" required autocomplete="new-password" />
+					<small class="field-hint" id="confirm-hint"></small>
+				</label>
+				<button type="submit" class="btn-primary">Guardar</button>
+			</form>
+		</section>
+	</div>
+</Layout>
+
+<style>
+	.profile-wrap {
+		max-width: 440px;
+		margin: 3rem auto;
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
+	}
+
+	.user-info {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.username {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: var(--q-accent-light);
+	}
+
+	.role {
+		font-size: 0.75rem;
+		padding: 0.2em 0.6em;
+		background: var(--q-accent-bg);
+		color: var(--q-accent-text);
+		border-radius: 999px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	h2 {
+		font-size: 1.125rem;
+		font-weight: 600;
+		margin-bottom: 1rem;
+	}
+
+	.alert {
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		font-size: 0.9375rem;
+		margin-bottom: 1rem;
+	}
+
+	.alert-error {
+		background: var(--q-wrong-bg);
+		border: 1px solid var(--q-wrong);
+		color: var(--q-wrong-text);
+	}
+
+	.alert-success {
+		background: var(--q-correct-bg);
+		border: 1px solid var(--q-correct);
+		color: var(--q-correct-text);
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		font-size: 0.875rem;
+		color: var(--q-text-muted);
+	}
+
+	input {
+		padding: 0.625rem 0.875rem;
+		background: var(--q-surface);
+		border: 1.5px solid var(--q-border);
+		border-radius: 0.5rem;
+		color: var(--q-text);
+		font-size: 1rem;
+		outline: none;
+		transition: border-color 0.15s;
+	}
+
+	input:focus {
+		border-color: var(--q-accent);
+	}
+
+	input.invalid {
+		border-color: var(--q-wrong);
+	}
+
+	.field-hint {
+		font-size: 0.75rem;
+		color: var(--q-text-subtle);
+	}
+
+	.field-hint.error {
+		color: var(--q-wrong-text);
+	}
+</style>
+
+<script>
+	const newInput = document.getElementById("new-password") as HTMLInputElement | null;
+	const confirmInput = document.getElementById("confirm-password") as HTMLInputElement | null;
+	const newHint = document.getElementById("new-hint") as HTMLElement | null;
+	const confirmHint = document.getElementById("confirm-hint") as HTMLElement | null;
+
+	function validate() {
+		if (newInput && newHint) {
+			const short = newInput.value.length > 0 && newInput.value.length < 8;
+			newInput.classList.toggle("invalid", short);
+			newHint.classList.toggle("error", short);
+			newHint.textContent = short ? "Mínimo 8 caracteres." : "Mínimo 8 caracteres";
+		}
+		if (confirmInput && confirmHint && newInput) {
+			const mismatch = confirmInput.value.length > 0 && confirmInput.value !== newInput.value;
+			confirmInput.classList.toggle("invalid", mismatch);
+			confirmHint.classList.toggle("error", mismatch);
+			confirmHint.textContent = mismatch ? "As passwords não coincidem." : "";
+		}
+	}
+
+	newInput?.addEventListener("input", validate);
+	confirmInput?.addEventListener("input", validate);
+</script>
