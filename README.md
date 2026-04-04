@@ -26,7 +26,40 @@ git submodule update --init
 ]
 ```
 
-**`scripts/setup-quizzes.js`** — lê o `wrangler.jsonc` do pai e gera o `wrangler.jsonc` do submodulo com o nome do Worker (`quizzes-<nome-do-pai>`) e o binding D1. Ver o ficheiro no repo pai para o conteúdo completo.
+**`scripts/setup-quizzes.js`** — lê o `wrangler.jsonc` do pai e gera o `wrangler.jsonc` do submodulo com o nome do Worker (`quizzes-<nome-do-pai>`) e o binding D1:
+
+```js
+import { readFileSync, writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const root = dirname(fileURLToPath(import.meta.url)) + "/..";
+
+const parentRaw = readFileSync(join(root, "wrangler.jsonc"), "utf-8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g, (_, str) => str ?? "")
+  .replace(/,(\s*[}\]])/g, "$1");
+const parent = JSON.parse(parentRaw);
+
+const db = parent.d1_databases?.find(d => d.database_name === "quizzes");
+if (!db) {
+  console.error('Binding D1 "quizzes" não encontrado em wrangler.jsonc');
+  process.exit(1);
+}
+
+const workerName = `quizzes-${parent.name}`;
+
+writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
+  name: workerName,
+  // Keep quizzes on its tested runtime date instead of inheriting the parent app date.
+  compatibility_date: "2026-03-10",
+  compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
+  assets: { binding: "ASSETS", directory: "./dist" },
+  d1_databases: [db],
+}, null, "\t"));
+
+console.log(`✓ quizzes/wrangler.jsonc gerado (worker: ${workerName}).`);
+```
 
 **`package.json`** do pai:
 
