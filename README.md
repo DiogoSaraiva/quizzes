@@ -26,32 +26,7 @@ git submodule update --init
 ]
 ```
 
-**`scripts/setup-quizzes.js`** — gera o `wrangler.jsonc` do submodulo a partir da config do pai:
-
-```js
-import { readFileSync, writeFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const root = dirname(fileURLToPath(import.meta.url)) + "/..";
-const parentRaw = readFileSync(join(root, "wrangler.jsonc"), "utf-8")
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g, (_, str) => str ?? "")
-  .replace(/,(\s*[}\]])/g, "$1");
-const parent = JSON.parse(parentRaw);
-const db = parent.d1_databases?.find(d => d.database_name === "quizzes");
-if (!db) { console.error('Binding D1 "quizzes" não encontrado'); process.exit(1); }
-
-writeFileSync(join(root, "quizzes/wrangler.jsonc"), JSON.stringify({
-  name: "quizzes",
-  // Mantém a runtime date testada do quizzes (não herdar do pai)
-  compatibility_date: "2026-03-10",
-  compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
-  assets: { binding: "ASSETS", directory: "./dist" },
-  d1_databases: [db],
-}, null, "\t"));
-console.log("✓ quizzes/wrangler.jsonc gerado.");
-```
+**`scripts/setup-quizzes.js`** — lê o `wrangler.jsonc` do pai e gera o `wrangler.jsonc` do submodulo com o nome do Worker (`quizzes-<nome-do-pai>`) e o binding D1. Ver o ficheiro no repo pai para o conteúdo completo.
 
 **`package.json`** do pai:
 
@@ -85,13 +60,12 @@ openssl rand -hex 32
 Depois adiciona-o ao Worker (o wrangler pede o valor interativamente):
 
 ```bash
-cd quizzes
-npx wrangler secret put ADMIN_SECRET
+npx wrangler secret put ADMIN_SECRET --name quizzes-<nome-do-pai>
 ```
 
 Guarda o valor num password manager — precisas dele para importar e apagar quizzes.
 
-> **Vários sites, um Worker** — se vários sites partilharem o mesmo Worker (e a mesma D1), basta um único `ADMIN_SECRET`. Se quiseres dados isolados por site, cria um Worker separado por cada um e corre o comando com `--name quizzes-nome-do-site`.
+> **Vários sites** — cada site cria o seu próprio Worker com nome `quizzes-<nome-do-pai>` (gerado automaticamente pelo `setup-quizzes.js`). Cada um pode ter o seu `ADMIN_SECRET` e a sua D1.
 
 ### 6. CI automático (Cloudflare Pages do pai)
 
