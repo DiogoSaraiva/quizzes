@@ -45,7 +45,7 @@ const user = Astro.locals.user;
 					)}
 					{user ? (
 						<>
-							<span class="nav-user">{user.username}</span>
+							<a href="/profile" class="nav-user">{user.username}</a>
 							<a href="/api/auth/logout" class="nav-link">Sair</a>
 						</>
 					) : (
@@ -161,6 +161,11 @@ const user = Astro.locals.user;
 		font-size: 0.875rem;
 		color: var(--q-accent-light);
 		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.nav-user:hover {
+		color: var(--q-text);
 	}
 
 	main {
