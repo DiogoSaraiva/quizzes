@@ -21,16 +21,17 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 		if (cookie) {
 			try {
 				const session = await env.DB.prepare(
-					"SELECT s.user_id, u.username, u.email, u.approved FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > datetime('now')"
+					"SELECT s.user_id, u.username, u.email, u.approved, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > datetime('now')"
 				)
 					.bind(cookie)
-					.first<Pick<User, "approved" | "username" | "email"> & { user_id: number }>();
+					.first<Pick<User, "approved" | "username" | "email" | "role"> & { user_id: number }>();
 
 				if (session && session.approved) {
 					ctx.locals.user = {
 						id: session.user_id,
 						username: session.username,
 						email: session.email,
+						role: session.role,
 					};
 				}
 			} catch (err) {

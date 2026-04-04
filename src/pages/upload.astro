@@ -1,0 +1,245 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+// Apenas editores e admins podem aceder
+if (!user || (user.role !== "editor" && user.role !== "admin")) {
+	return Astro.redirect("/");
+}
+---
+
+<Layout title="Carregar Quiz">
+	<h1>Carregar Quiz</h1>
+	<p class="subtitle">
+		Cola o JSON gerado pelo Claude/ChatGPT e clica em <strong>Carregar</strong>.
+	</p>
+
+	<div id="status" class="status hidden"></div>
+
+	<form id="upload-form">
+		<label class="field-label" for="json-input">JSON do Quiz</label>
+		<textarea
+			id="json-input"
+			name="json"
+			rows="20"
+			placeholder='{"title": "...", "subject": "...", "slug": "...", "questions": [...]}'
+			required
+		></textarea>
+		<div class="form-footer">
+			<button type="submit" class="btn-primary" id="submit-btn">Carregar</button>
+			<span class="hint">Ficheiros com o mesmo <code>slug</code> são substituídos automaticamente.</span>
+		</div>
+	</form>
+
+	<details class="format-help">
+		<summary>Formato esperado do JSON</summary>
+		<pre><code>{`{
+  "title": "Anatomia — Sistema Nervoso",
+  "description": "Neurónios e sinapses",
+  "subject": "Anatomia",
+  "topic": "Sistema Nervoso",
+  "topic_order": 0,
+  "slug": "anatomia-sistema-nervoso-1",
+  "questions": [
+    {
+      "text": "Qual é a unidade funcional do sistema nervoso?",
+      "type": "multiple_choice",
+      "order": 1,
+      "explanation": "O neurónio é...",
+      "options": [
+        { "text": "Neurónio", "is_correct": true },
+        { "text": "Axónio",   "is_correct": false }
+      ]
+    }
+  ]
+}`}</code></pre>
+	</details>
+</Layout>
+
+<script>
+	const form = document.getElementById("upload-form") as HTMLFormElement;
+	const statusEl = document.getElementById("status") as HTMLDivElement;
+	const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const raw = (document.getElementById("json-input") as HTMLTextAreaElement).value.trim();
+
+		statusEl.className = "status hidden";
+		submitBtn.disabled = true;
+		submitBtn.textContent = "A carregar…";
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(raw);
+		} catch {
+			showError("JSON inválido — verifica a sintaxe.");
+			return;
+		}
+
+		try {
+			const res = await fetch("/api/quizzes/upload", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(parsed),
+			});
+
+			const data = await res.json() as { ok?: boolean; error?: string; slug?: string; replaced?: boolean };
+
+			if (res.ok && data.ok) {
+				const action = data.replaced ? "substituído" : "criado";
+				showSuccess(`Quiz ${action} com sucesso! <a href="/${data.slug}">Abrir quiz →</a>`);
+				(document.getElementById("json-input") as HTMLTextAreaElement).value = "";
+			} else {
+				showError(data.error ?? "Erro desconhecido");
+			}
+		} catch {
+			showError("Erro de rede. Tenta novamente.");
+		} finally {
+			submitBtn.disabled = false;
+			submitBtn.textContent = "Carregar";
+		}
+	});
+
+	function showError(msg: string) {
+		statusEl.innerHTML = msg;
+		statusEl.className = "status error";
+	}
+
+	function showSuccess(msg: string) {
+		statusEl.innerHTML = msg;
+		statusEl.className = "status success";
+	}
+</script>
+
+<style>
+	h1 {
+		font-size: 2rem;
+		font-weight: 700;
+		margin-bottom: 0.5rem;
+		letter-spacing: -0.05em;
+	}
+
+	.subtitle {
+		color: var(--q-text-muted);
+		margin-bottom: 1.5rem;
+	}
+
+	.status {
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		margin-bottom: 1rem;
+		font-size: 0.9375rem;
+	}
+
+	.status.error {
+		background: var(--q-wrong-bg);
+		color: var(--q-wrong-text);
+		border: 1px solid var(--q-wrong);
+	}
+
+	.status.success {
+		background: var(--q-correct-bg);
+		color: var(--q-correct-text);
+		border: 1px solid var(--q-correct);
+	}
+
+	.status.success a {
+		color: var(--q-correct-text);
+		font-weight: 600;
+	}
+
+	.field-label {
+		display: block;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--q-text-muted);
+		margin-bottom: 0.5rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	textarea {
+		width: 100%;
+		background: var(--q-surface);
+		color: var(--q-text);
+		border: 1px solid var(--q-border);
+		border-radius: 0.5rem;
+		padding: 0.875rem;
+		font-family: monospace;
+		font-size: 0.85rem;
+		resize: vertical;
+		outline: none;
+		transition: border-color 0.15s;
+	}
+
+	textarea:focus {
+		border-color: var(--q-accent);
+	}
+
+	.form-footer {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-top: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.hint {
+		font-size: 0.8125rem;
+		color: var(--q-text-subtle);
+	}
+
+	.hint code {
+		background: var(--q-surface);
+		padding: 0.1em 0.35em;
+		border-radius: 0.25rem;
+		font-size: 0.875em;
+	}
+
+	.format-help {
+		margin-top: 2rem;
+		border: 1px solid var(--q-border);
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.format-help summary {
+		padding: 0.875rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--q-text-muted);
+		cursor: pointer;
+		user-select: none;
+		list-style: none;
+	}
+
+	.format-help summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.format-help summary::before {
+		content: "▶ ";
+		font-size: 0.6rem;
+		color: var(--q-accent-light);
+	}
+
+	details[open] .format-help summary::before {
+		content: "▼ ";
+	}
+
+	.format-help pre {
+		margin: 0;
+		padding: 1rem;
+		background: var(--q-surface);
+		border-top: 1px solid var(--q-border);
+		overflow-x: auto;
+	}
+
+	.format-help code {
+		font-size: 0.8125rem;
+		color: var(--q-text-muted);
+		font-family: monospace;
+	}
+</style>

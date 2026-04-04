@@ -14,6 +14,7 @@ declare namespace App {
 			id: number;
 			username: string;
 			email: string;
+			role: "user" | "editor" | "admin";
 		};
 	}
 }

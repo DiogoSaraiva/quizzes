@@ -35,13 +35,17 @@ export const POST: APIRoute = async ({ request }) => {
 
 		const { hash, salt } = await hashPassword(password);
 
+		// O primeiro utilizador a registar-se torna-se admin e fica aprovado automaticamente
+		const userCount = await env.DB.prepare("SELECT COUNT(*) as count FROM users").first<{ count: number }>();
+		const isFirst = !userCount || userCount.count === 0;
+
 		await env.DB.prepare(
-			"INSERT INTO users (username, email, password_hash, password_salt) VALUES (?, ?, ?, ?)"
+			"INSERT INTO users (username, email, password_hash, password_salt, approved, role) VALUES (?, ?, ?, ?, ?, ?)"
 		)
-			.bind(username, email, hash, salt)
+			.bind(username, email, hash, salt, isFirst ? 1 : 0, isFirst ? "admin" : "user")
 			.run();
 
-		return redirect(new URL("/register?success=1", request.url));
+		return redirect(new URL(isFirst ? "/register?success=1&admin=1" : "/register?success=1", request.url));
 	} catch (err) {
 		console.error("POST /api/auth/register error:", err);
 		return new Response("Internal Server Error", { status: 500 });

@@ -9,6 +9,8 @@ export interface Quiz {
 	topic: string | null;
 	/** Posição do tema no índice (0, 1, 2...) */
 	topic_order: number;
+	uploaded_by: number | null;
+	uploaded_by_username?: string | null;
 	created_at: string;
 }
 
@@ -50,6 +52,7 @@ export interface User {
 	password_hash: string;
 	password_salt: string;
 	approved: number; // 0 | 1
+	role: "user" | "editor" | "admin";
 	created_at: string;
 }
 
