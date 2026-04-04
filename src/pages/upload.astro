@@ -33,6 +33,51 @@ if (!user || (user.role !== "editor" && user.role !== "admin")) {
 	</form>
 
 	<details class="format-help">
+		<summary>Prompt para o Claude / ChatGPT</summary>
+		<div class="prompt-header">
+			<p class="prompt-desc">Copia este prompt e envia juntamente com os slides ou documento da matéria.</p>
+			<button class="btn-copy" id="copy-prompt-btn">Copiar prompt</button>
+		</div>
+		<pre id="prompt-text"><code>{`Analisa o conteúdo fornecido e cria um quiz de estudo.
+Responde APENAS com JSON válido, sem texto antes ou depois, sem blocos de código (sem \`\`\`).
+
+Formato obrigatório:
+{
+  "title": "Título descritivo do quiz",
+  "description": "Uma frase sobre o que é abordado",
+  "subject": "Nome da cadeira/disciplina",
+  "topic": "Nome do tema/capítulo (omitir se for quiz geral da cadeira)",
+  "slug": "cadeira-tema-numero",
+  "questions": [
+    {
+      "text": "Texto da pergunta?",
+      "type": "multiple_choice",
+      "order": 1,
+      "explanation": "Explicação breve de porque a resposta correta está certa.",
+      "options": [
+        { "text": "Opção A", "is_correct": false },
+        { "text": "Opção B", "is_correct": true },
+        { "text": "Opção C", "is_correct": false },
+        { "text": "Opção D", "is_correct": false }
+      ]
+    }
+  ]
+}
+
+Regras:
+- Cria entre 15 e 25 perguntas
+- Cada pergunta multiple_choice tem exatamente 4 opções, apenas 1 correta
+- Perguntas de verdadeiro/falso usam type "true_false" com 2 opções: "Verdadeiro" e "Falso"
+- O slug usa só minúsculas, sem acentos, palavras separadas por hífens (ex: "anatomia-sistema-nervoso-1")
+- Cada pergunta deve ter um campo "explanation" com 1-2 frases a explicar porque a resposta correta está certa
+- O campo "explanation" é opcional — omite se não houver explicação útil a acrescentar
+- As perguntas devem cobrir os conceitos mais importantes do conteúdo
+- Varia o tipo de pergunta: definições, aplicação, comparação, identificação
+- Não repitas perguntas semelhantes
+- Faz perguntas difíceis, já que esse quiz irá servir como elemento de estudo para aluno de licenciatura`}</code></pre>
+	</details>
+
+	<details class="format-help">
 		<summary>Formato esperado do JSON</summary>
 		<pre><code>{`{
   "title": "Anatomia — Sistema Nervoso",
@@ -46,10 +91,22 @@ if (!user || (user.role !== "editor" && user.role !== "admin")) {
       "text": "Qual é a unidade funcional do sistema nervoso?",
       "type": "multiple_choice",
       "order": 1,
-      "explanation": "O neurónio é...",
+      "explanation": "O neurónio é a célula especializada na transmissão de impulsos nervosos.",
       "options": [
-        { "text": "Neurónio", "is_correct": true },
-        { "text": "Axónio",   "is_correct": false }
+        { "text": "Neurónio",  "is_correct": true  },
+        { "text": "Axónio",    "is_correct": false },
+        { "text": "Dendrito",  "is_correct": false },
+        { "text": "Sinapse",   "is_correct": false }
+      ]
+    },
+    {
+      "text": "O sistema nervoso central inclui o cérebro e a medula espinhal.",
+      "type": "true_false",
+      "order": 2,
+      "explanation": "O SNC é composto pelo encéfalo (cérebro, cerebelo e tronco encefálico) e pela medula espinhal.",
+      "options": [
+        { "text": "Verdadeiro", "is_correct": true  },
+        { "text": "Falso",      "is_correct": false }
       ]
     }
   ]
@@ -111,6 +168,16 @@ if (!user || (user.role !== "editor" && user.role !== "admin")) {
 		statusEl.innerHTML = msg;
 		statusEl.className = "status success";
 	}
+
+	const copyBtn = document.getElementById("copy-prompt-btn") as HTMLButtonElement;
+	copyBtn?.addEventListener("click", () => {
+		const promptEl = document.getElementById("prompt-text");
+		const text = promptEl?.textContent?.trim() ?? "";
+		navigator.clipboard.writeText(text).then(() => {
+			copyBtn.textContent = "Copiado!";
+			setTimeout(() => { copyBtn.textContent = "Copiar prompt"; }, 2000);
+		});
+	});
 </script>
 
 <style>
@@ -241,5 +308,40 @@ if (!user || (user.role !== "editor" && user.role !== "admin")) {
 		font-size: 0.8125rem;
 		color: var(--q-text-muted);
 		font-family: monospace;
+	}
+
+	.prompt-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		border-top: 1px solid var(--q-border);
+		background: var(--q-surface);
+		flex-wrap: wrap;
+	}
+
+	.prompt-desc {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: var(--q-text-muted);
+	}
+
+	.btn-copy {
+		padding: 0.35rem 0.85rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--q-border);
+		background: var(--q-bg);
+		color: var(--q-text-muted);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: border-color 0.15s, color 0.15s;
+		white-space: nowrap;
+	}
+
+	.btn-copy:hover {
+		border-color: var(--q-accent);
+		color: var(--q-accent);
 	}
 </style>

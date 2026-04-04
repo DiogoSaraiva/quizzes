@@ -21,8 +21,10 @@
 		"approve-user": "node scripts/approve-user.js"
 	},
 	"dependencies": {
+		"@astrojs/check": "^0.9.8",
 		"@astrojs/cloudflare": "^13.0.2",
-		"astro": "^6.0.2"
+		"astro": "^6.0.2",
+		"typescript": "^5.9.3"
 	},
 	"devDependencies": {
 		"@types/node": "^25.4.0",
