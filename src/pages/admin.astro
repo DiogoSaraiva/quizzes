@@ -1,0 +1,360 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+import type { User } from "../lib/db";
+
+const user = Astro.locals.user;
+
+if (!user || user.role !== "admin") {
+	return Astro.redirect("/");
+}
+
+type UserRow = Pick<User, "id" | "username" | "email" | "approved" | "role" | "created_at">;
+
+let users: UserRow[] = [];
+try {
+	const { results } = await env.DB.prepare(
+		"SELECT id, username, email, approved, role, created_at FROM users ORDER BY created_at ASC"
+	).all<UserRow>();
+	users = results;
+} catch (err) {
+	console.error("Failed to load users:", err);
+}
+
+const pending = users.filter((u) => !u.approved);
+const active = users.filter((u) => u.approved);
+---
+
+<Layout title="Administração">
+	<h1>Administração</h1>
+	<p class="subtitle">Gere utilizadores, aprovações e permissões.</p>
+
+	<div id="global-status" class="status hidden"></div>
+
+	{pending.length > 0 && (
+		<section class="section">
+			<h2 class="section-title">Pendentes de aprovação ({pending.length})</h2>
+			<div class="user-list">
+				{pending.map((u) => (
+					<div class="user-card pending" data-id={u.id}>
+						<div class="user-info">
+							<span class="user-name">{u.username}</span>
+							<span class="user-email">{u.email}</span>
+							<span class="user-date">Registado: {new Date(u.created_at).toLocaleDateString("pt-PT")}</span>
+						</div>
+						<div class="user-actions">
+							<button class="btn-approve" data-id={u.id} data-username={u.username}>Aprovar</button>
+							<button class="btn-reject" data-id={u.id} data-username={u.username}>Recusar</button>
+						</div>
+					</div>
+				))}
+			</div>
+		</section>
+	)}
+
+	<section class="section">
+		<h2 class="section-title">Utilizadores activos ({active.length})</h2>
+		<div class="user-list">
+			{active.map((u) => (
+				<div class="user-card" data-id={u.id} id={`user-${u.id}`}>
+					<div class="user-info">
+						<span class="user-name">
+							{u.username}
+							{u.id === user.id && <span class="badge-you">tu</span>}
+						</span>
+						<span class="user-email">{u.email}</span>
+						<span class="user-date">Registado: {new Date(u.created_at).toLocaleDateString("pt-PT")}</span>
+					</div>
+					<div class="user-actions">
+						{u.id !== user.id ? (
+							<>
+								<select class="role-select" data-id={u.id} data-current={u.role}>
+									<option value="user" selected={u.role === "user"}>Utilizador</option>
+									<option value="editor" selected={u.role === "editor"}>Editor</option>
+									<option value="admin" selected={u.role === "admin"}>Admin</option>
+								</select>
+								<button class="btn-save-role" data-id={u.id}>Guardar</button>
+								<button class="btn-revoke" data-id={u.id} data-username={u.username}>Revogar acesso</button>
+							</>
+						) : (
+							<span class="role-badge role-{u.role}">{u.role}</span>
+						)}
+					</div>
+				</div>
+			))}
+		</div>
+	</section>
+</Layout>
+
+<script>
+	const globalStatus = document.getElementById("global-status") as HTMLDivElement;
+
+	function showStatus(msg: string, type: "success" | "error") {
+		globalStatus.innerHTML = msg;
+		globalStatus.className = `status ${type}`;
+		setTimeout(() => { globalStatus.className = "status hidden"; }, 4000);
+	}
+
+	async function patchUser(id: number, body: object) {
+		const res = await fetch(`/api/admin/users/${id}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		return res;
+	}
+
+	// Aprovar utilizadores pendentes
+	document.querySelectorAll<HTMLButtonElement>(".btn-approve").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			const id = Number(btn.dataset.id);
+			const username = btn.dataset.username;
+			btn.disabled = true;
+			try {
+				const res = await patchUser(id, { approved: 1, role: "user" });
+				if (res.ok) {
+					showStatus(`${username} aprovado.`, "success");
+					btn.closest(".user-card")?.remove();
+				} else {
+					const d = await res.json() as { error?: string };
+					showStatus(d.error ?? "Erro", "error");
+				}
+			} finally {
+				btn.disabled = false;
+			}
+		});
+	});
+
+	// Recusar (manter não aprovado mas enviar feedback)
+	document.querySelectorAll<HTMLButtonElement>(".btn-reject").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			const id = Number(btn.dataset.id);
+			const username = btn.dataset.username;
+			if (!confirm(`Recusar o registo de "${username}"? O utilizador ficará não aprovado.`)) return;
+			btn.disabled = true;
+			try {
+				const res = await patchUser(id, { approved: 0 });
+				if (res.ok) {
+					showStatus(`Registo de ${username} mantido como não aprovado.`, "success");
+				} else {
+					const d = await res.json() as { error?: string };
+					showStatus(d.error ?? "Erro", "error");
+				}
+			} finally {
+				btn.disabled = false;
+			}
+		});
+	});
+
+	// Guardar novo papel
+	document.querySelectorAll<HTMLButtonElement>(".btn-save-role").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			const id = Number(btn.dataset.id);
+			const select = document.querySelector<HTMLSelectElement>(`.role-select[data-id="${id}"]`);
+			if (!select) return;
+			const newRole = select.value;
+			btn.disabled = true;
+			try {
+				const res = await patchUser(id, { role: newRole });
+				if (res.ok) {
+					select.dataset.current = newRole;
+					showStatus("Papel actualizado.", "success");
+				} else {
+					const d = await res.json() as { error?: string };
+					showStatus(d.error ?? "Erro", "error");
+					select.value = select.dataset.current ?? "user";
+				}
+			} finally {
+				btn.disabled = false;
+			}
+		});
+	});
+
+	// Revogar acesso (desaprovar)
+	document.querySelectorAll<HTMLButtonElement>(".btn-revoke").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			const id = Number(btn.dataset.id);
+			const username = btn.dataset.username;
+			if (!confirm(`Revogar o acesso de "${username}"?`)) return;
+			btn.disabled = true;
+			try {
+				const res = await patchUser(id, { approved: 0, role: "user" });
+				if (res.ok) {
+					showStatus(`Acesso de ${username} revogado.`, "success");
+					document.getElementById(`user-${id}`)?.remove();
+				} else {
+					const d = await res.json() as { error?: string };
+					showStatus(d.error ?? "Erro", "error");
+				}
+			} finally {
+				btn.disabled = false;
+			}
+		});
+	});
+</script>
+
+<style>
+	h1 {
+		font-size: 2rem;
+		font-weight: 700;
+		margin-bottom: 0.5rem;
+		letter-spacing: -0.05em;
+	}
+
+	.subtitle {
+		color: var(--q-text-muted);
+		margin-bottom: 1.5rem;
+	}
+
+	.status {
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		margin-bottom: 1.25rem;
+		font-size: 0.9375rem;
+	}
+
+	.status.error {
+		background: var(--q-wrong-bg);
+		color: var(--q-wrong-text);
+		border: 1px solid var(--q-wrong);
+	}
+
+	.status.success {
+		background: var(--q-correct-bg);
+		color: var(--q-correct-text);
+		border: 1px solid var(--q-correct);
+	}
+
+	.section {
+		margin-bottom: 2rem;
+	}
+
+	.section-title {
+		font-size: 1rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--q-text-muted);
+		margin-bottom: 0.75rem;
+	}
+
+	.user-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.user-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.875rem 1rem;
+		background: var(--q-surface);
+		border: 1px solid var(--q-border);
+		border-radius: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.user-card.pending {
+		border-color: var(--q-accent);
+		background: var(--q-accent-bg);
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.user-name {
+		font-weight: 600;
+		font-size: 0.9375rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.user-email {
+		font-size: 0.8125rem;
+		color: var(--q-text-muted);
+	}
+
+	.user-date {
+		font-size: 0.75rem;
+		color: var(--q-text-subtle);
+	}
+
+	.badge-you {
+		display: inline-block;
+		font-size: 0.65rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: var(--q-accent);
+		color: #fff;
+		border-radius: 0.25rem;
+		padding: 0.1rem 0.35rem;
+	}
+
+	.user-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.role-select {
+		background: var(--q-bg);
+		color: var(--q-text);
+		border: 1px solid var(--q-border);
+		border-radius: 0.375rem;
+		padding: 0.375rem 0.5rem;
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+
+	.role-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--q-text-muted);
+		background: var(--q-bg);
+		border: 1px solid var(--q-border);
+		border-radius: 0.25rem;
+		padding: 0.2rem 0.5rem;
+	}
+
+	button {
+		padding: 0.375rem 0.75rem;
+		border-radius: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		cursor: pointer;
+		border: none;
+		transition: opacity 0.15s;
+	}
+
+	button:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.btn-approve {
+		background: var(--q-correct);
+		color: #fff;
+	}
+
+	.btn-reject,
+	.btn-revoke {
+		background: var(--q-wrong-bg);
+		color: var(--q-wrong-text);
+		border: 1px solid var(--q-wrong);
+	}
+
+	.btn-save-role {
+		background: var(--q-accent);
+		color: #fff;
+	}
+</style>

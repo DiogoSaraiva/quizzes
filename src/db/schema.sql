@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT    NOT NULL,
   password_salt TEXT    NOT NULL,
   approved      INTEGER NOT NULL DEFAULT 0,
+  role          TEXT    NOT NULL DEFAULT 'user',
   created_at    TEXT    DEFAULT (datetime('now'))
 );
 
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
   subject     TEXT,
   topic       TEXT,
   topic_order INTEGER NOT NULL DEFAULT 0,
+  uploaded_by INTEGER,
   created_at  TEXT    DEFAULT (datetime('now'))
 );
 

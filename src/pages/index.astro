@@ -3,11 +3,16 @@ import Layout from "../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
 import type { Quiz } from "../lib/db";
 
-let quizzes: Quiz[] = [];
+type QuizWithUploader = Quiz & { uploader_username: string | null };
+
+let quizzes: QuizWithUploader[] = [];
 try {
 	const { results } = await env.DB.prepare(
-		"SELECT id, slug, title, description, subject, topic, topic_order FROM quizzes ORDER BY subject ASC, topic_order ASC, topic ASC NULLS LAST, title ASC"
-	).all<Quiz>();
+		`SELECT q.id, q.slug, q.title, q.description, q.subject, q.topic, q.topic_order, u.username AS uploader_username
+		 FROM quizzes q
+		 LEFT JOIN users u ON q.uploaded_by = u.id
+		 ORDER BY q.subject ASC, q.topic_order ASC, q.topic ASC NULLS LAST, q.title ASC`
+	).all<QuizWithUploader>();
 	quizzes = results;
 } catch (err) {
 	console.error("Failed to load quizzes:", err);
@@ -15,13 +20,13 @@ try {
 
 // Agrupar por cadeira → temas
 interface TopicGroup {
-	general: Quiz | null; // quiz sem tema (geral da cadeira)
-	byTopic: Map<string, Quiz[]>;
+	general: QuizWithUploader | null; // quiz sem tema (geral da cadeira)
+	byTopic: Map<string, QuizWithUploader[]>;
 }
 
 const bySubject = new Map<string, TopicGroup>();
 
-for (const quiz of quizzes as Quiz[]) {
+for (const quiz of quizzes) {
 	const subject = quiz.subject ?? "Sem Cadeira";
 	if (!bySubject.has(subject)) {
 		bySubject.set(subject, { general: null, byTopic: new Map() });
@@ -69,7 +74,10 @@ for (const quiz of quizzes as Quiz[]) {
 									<div class="topic-quizzes">
 										{topicQuizzes.map((q) => (
 											<a href={`/${q.slug}`} class="quiz-link">
-												{q.title}
+												<span class="quiz-title">{q.title}</span>
+												{q.uploader_username && (
+													<span class="quiz-uploader">por {q.uploader_username}</span>
+												)}
 											</a>
 										))}
 									</div>
@@ -205,6 +213,20 @@ for (const quiz of quizzes as Quiz[]) {
 		display: flex;
 		flex-direction: column;
 		gap: 0.375rem;
+	}
+
+	.quiz-title {
+		flex: 1;
+	}
+
+	.quiz-uploader {
+		font-size: 0.75rem;
+		color: var(--q-text-subtle);
+		white-space: nowrap;
+	}
+
+	.quiz-link:hover .quiz-uploader {
+		color: var(--q-accent-text);
 	}
 
 	.empty {

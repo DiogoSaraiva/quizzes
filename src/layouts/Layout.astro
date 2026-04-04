@@ -1,23 +1,18 @@
 ---
-import { BRAND, BRAND_MARK } from "../generated/brand";
+import { BRAND } from "../generated/brand";
 
 interface Props {
 	title?: string;
 	brand?: string;
-	brandMark?: string;
 }
-
-const defaultBrand = BRAND;
-const defaultBrandMark = BRAND_MARK;
 
 const {
 	title = "Quizzes",
-	brand = defaultBrand,
-	brandMark = defaultBrandMark,
+	brand = BRAND,
 } = Astro.props;
 
 const showSuffix = brand !== "Quizzes";
-const brandLabel = showSuffix ? `${brand}${brandMark} Quizzes` : "Quizzes";
+const brandLabel = showSuffix ? `${brand} Quizzes` : "Quizzes";
 
 const user = Astro.locals.user;
 ---
@@ -38,11 +33,16 @@ const user = Astro.locals.user;
 			<nav>
 				<a href="/" class="brand">
 					{brand}
-					{brandMark && <span>{brandMark}</span>}
 					{showSuffix && <span class="brand-suffix">&nbsp;Quizzes</span>}
 				</a>
 				<div class="nav-right">
 					<a href="/leaderboard" class="nav-link">Leaderboard</a>
+					{user && (user.role === "editor" || user.role === "admin") && (
+						<a href="/upload" class="nav-link">Carregar Quiz</a>
+					)}
+					{user && user.role === "admin" && (
+						<a href="/admin" class="nav-link nav-admin">Admin</a>
+					)}
 					{user ? (
 						<>
 							<span class="nav-user">{user.username}</span>
@@ -151,6 +151,10 @@ const user = Astro.locals.user;
 
 	.nav-link:hover {
 		color: var(--q-text);
+	}
+
+	.nav-admin {
+		color: var(--q-accent-light);
 	}
 
 	.nav-user {

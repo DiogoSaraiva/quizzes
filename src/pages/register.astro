@@ -33,11 +33,12 @@ const errors: Record<string, string> = {
 					<input
 						type="text"
 						name="username"
+						id="username-input"
 						required
 						autocomplete="username"
 						pattern="[A-Za-z0-9_-]+"
-						title="Usa apenas letras, números, hífen ou underscore"
 					/>
+					<small class="field-hint" id="username-hint">Letras, números, <code>-</code> e <code>_</code> — sem espaços</small>
 				</label>
 				<label>
 					Email
@@ -45,7 +46,8 @@ const errors: Record<string, string> = {
 				</label>
 				<label>
 					Password
-					<input type="password" name="password" required autocomplete="new-password" minlength="8" />
+					<input type="password" name="password" id="password-input" required autocomplete="new-password" minlength="8" />
+					<small class="field-hint" id="password-hint">Mínimo 8 caracteres</small>
 				</label>
 				<label class="label-check">
 					<input type="checkbox" name="consent" required />
@@ -54,7 +56,7 @@ const errors: Record<string, string> = {
 						Consinto no tratamento dos meus dados para os fins descritos.
 					</span>
 				</label>
-				<button type="submit" class="btn-primary">Pedir acesso</button>
+				<button type="submit" class="btn-primary" id="submit-btn" disabled>Pedir acesso</button>
 			</form>
 		)}
 
@@ -130,6 +132,25 @@ const errors: Record<string, string> = {
 		border-color: var(--q-accent);
 	}
 
+	input.invalid {
+		border-color: var(--q-wrong);
+	}
+
+	.field-hint {
+		font-size: 0.75rem;
+		color: var(--q-text-subtle);
+	}
+
+	.field-hint code {
+		background: var(--q-bg);
+		padding: 0.05em 0.3em;
+		border-radius: 0.2rem;
+	}
+
+	.field-hint.error {
+		color: var(--q-wrong-text);
+	}
+
 	.btn-primary {
 		margin-top: 0.25rem;
 		padding: 0.75rem;
@@ -178,4 +199,50 @@ const errors: Record<string, string> = {
 		color: var(--q-accent-light);
 		text-decoration: underline;
 	}
+
+	.btn-primary:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
 </style>
+
+<script>
+	const form = document.querySelector("form");
+	const btn = document.getElementById("submit-btn") as HTMLButtonElement | null;
+	const usernameInput = document.getElementById("username-input") as HTMLInputElement | null;
+	const usernameHint = document.getElementById("username-hint") as HTMLElement | null;
+	const passwordInput = document.getElementById("password-input") as HTMLInputElement | null;
+	const passwordHint = document.getElementById("password-hint") as HTMLElement | null;
+
+	function checkUsername() {
+		if (!usernameInput || !usernameHint) return;
+		const val = usernameInput.value;
+		const invalid = val.length > 0 && !/^[A-Za-z0-9_-]+$/.test(val);
+		usernameInput.classList.toggle("invalid", invalid);
+		usernameHint.classList.toggle("error", invalid);
+		usernameHint.textContent = invalid
+			? "Caracteres inválidos — remove espaços e símbolos."
+			: "Letras, números, - e _ — sem espaços";
+	}
+
+	function checkPassword() {
+		if (!passwordInput || !passwordHint) return;
+		const val = passwordInput.value;
+		const invalid = val.length > 0 && val.length < 8;
+		passwordInput.classList.toggle("invalid", invalid);
+		passwordHint.classList.toggle("error", invalid);
+		passwordHint.textContent = invalid
+			? "A password deve ter pelo menos 8 caracteres."
+			: "Mínimo 8 caracteres";
+	}
+
+	if (form && btn) {
+		const check = () => {
+			checkUsername();
+			checkPassword();
+			btn.disabled = !form.checkValidity();
+		};
+		form.addEventListener("input", check);
+		check();
+	}
+</script>
