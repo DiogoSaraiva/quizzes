@@ -121,7 +121,12 @@ Regras:
 
 	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
-		const raw = (document.getElementById("json-input") as HTMLTextAreaElement).value.trim();
+		// Strip BOM and normalize curly/smart quotes that AI chat interfaces often introduce
+		const raw = (document.getElementById("json-input") as HTMLTextAreaElement).value
+			.replace(/^\uFEFF/, "")
+			.replace(/[\u201C\u201D]/g, '"')
+			.replace(/[\u2018\u2019]/g, "'")
+			.trim();
 
 		statusEl.className = "status hidden";
 		submitBtn.disabled = true;
